@@ -4,13 +4,13 @@ unit VirtualList;
 interface
 
 uses
-  Windows, Forms, Controls, StdCtrls, Graphics, Classes, SysUtils, VirtualTrees,
-  Logging, LMessages, ShellAPI, LCLIntf, Math;
+  Forms, Controls, StdCtrls, Graphics, Classes, SysUtils, VirtualTrees,
+  Logging, LMessages, LCLIntf, Math;
 
 type
   {$Z4} INPUTTYPE = (INPUT_MOUSE = $00, INPUT_KEYBOARD = $01, INPUT_HARDWARE = $02);
   {$Z4} KEYEVENTF = (KEYEVENTF_EXTENDEDKEY = $01, KEYEVENTF_KEYUP = $02, KEYEVENTF_SCANCODE = $04, KEYEVENTF_UNICODE = $08);
-  TKEYINPUT = record
+  {TKEYINPUT = record
     itype: INPUTTYPE;
     // tagKEYBDINPUT
     wVk: WORD;
@@ -18,7 +18,7 @@ type
     dwFlags: KEYEVENTF;
     time: DWORD;
     dwExtraInfo: ULONG_PTR;
-  end;
+  end;} //TODO
 
   PVirtualItem = ^TVirtualItem;
   TVirtualItem = record
@@ -83,7 +83,7 @@ type
     property TilesCount: Dword read FTilesCount;
   end;
 
-function SendInput(nInputs:UINT; pInputs:POINTER; cbSize:INTEGER):UINT; stdcall; external 'User32.dll' name 'SendInput';
+//function SendInput(nInputs:UINT; pInputs:POINTER; cbSize:INTEGER):UINT; stdcall; external 'User32.dll' name 'SendInput';
 
 Implementation
 
@@ -636,7 +636,7 @@ var
   ShiftState: TShiftState;
   HitItem: PVirtualItem;
   item: PVirtualItem;
-  kinput: TKEYINPUT;
+  //kinput: TKEYINPUT;
 begin
   //Logger.Send([lcClient, lcDebug], 'TVirtualTree.HandleMouseDown %s', ['Start']);
   HitItem := Self.GetItemAt(HitInfo.HitNode, HitInfo.HitColumn);
@@ -681,14 +681,14 @@ begin
   inherited HandleMouseDown(Message, HitInfo);
 
   // Чтоже я творю-то...
-  if (ShiftState = []) then begin
+  {if (ShiftState = []) then begin
     kinput.itype := INPUT_KEYBOARD;
     kinput.wVk := $11; // VK_CONTROL
     SendInput(1, @kinput, sizeof(TKEYINPUT));
     BeginDrag(TRUE);
     kinput.dwFlags := KEYEVENTF_KEYUP;
     SendInput(1, @kinput, sizeof(TKEYINPUT));
-  end;
+  end;} //TODO
 
 end;
 

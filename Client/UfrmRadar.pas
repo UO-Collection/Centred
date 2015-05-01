@@ -32,7 +32,7 @@ interface
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   ImagingClasses, ImagingComponents, ImagingTypes, UEnhancedMemoryStream, crc,
-  StdCtrls, LConvEncoding, Windows, ShellAPI, Logging, LCLIntf;
+  StdCtrls, LConvEncoding, Logging, LCLIntf;
 
 type
 

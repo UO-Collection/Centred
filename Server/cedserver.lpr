@@ -21,7 +21,8 @@
  * CDDL HEADER END
  *
  *
- *      Portions Copyright 2008 Andreas Schneider
+ *      Portions Copyright 2015 Andreas Schneider
+ *      Portions Copyright 2015 StaticZ
  *)
 program cedserver;
 

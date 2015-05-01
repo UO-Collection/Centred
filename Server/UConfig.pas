@@ -264,7 +264,7 @@ begin
 
   Writeln('');
   Writeln('==============');
-  FLanguage := '..\Language\English.ini';
+  FLanguage := '../Language/English.ini';
   Writeln(UTF8ToCP866('language file [' + FLanguage + ']'));
   Readln (stringValue);
   if (stringValue <> '')

@@ -21,7 +21,8 @@
  * CDDL HEADER END
  *
  *
- *      Portions Copyright 2009 Andreas Schneider
+ *      Portions Copyright 2015 Andreas Schneider
+ *      Portions Copyright 2015 StaticZ
  *)
 unit UfrmHueSettings;
 
@@ -31,10 +32,9 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ExtCtrls, Buttons, UfrmToolWindow, XMLRead, XMLWrite, DOM, VirtualTrees, VirtualList,
-  Math, UHue, UArt, UTiledata, UfrmMain, ImagingComponents, LConvEncoding, ComCtrls,
-  Windows, ShellAPI, Logging,
-  ULandscape;//ImagingClasses, UPlatformTypes;
+  ExtCtrls, Buttons, UfrmToolWindow, XMLRead, XMLWrite, DOM, VirtualTrees,
+  VirtualList, Math, UHue, UArt, UTiledata, UfrmMain, ImagingComponents,
+  LConvEncoding, ComCtrls, Logging, LCLIntf, LCLType, ULandscape;
 
 type
 
@@ -592,21 +592,21 @@ begin
 
   if vdtHuePreview.Tag = edTileId.Tag then exit;
 
-  //определяем число колонок
+  // We determine the number of columns
   cols:= ((ClientWidth - GetSystemMetrics(SM_CXVSCROLL))// - 16)
           div (ItemWidth + 2)) - 1;
   if (cols > vdtHuesPreviewColumnsMax)
   then cols:=vdtHuesPreviewColumnsMax;
-  Logger.Send([lcClient, lcInfo], 'TfrmHueSettings.HuePreviewRebuild(): Число колонок cols', cols+1);
+  Logger.Send([lcClient, lcInfo], 'TfrmHueSettings.HuePreviewRebuild(): Number of columns', cols+1);
 
-  // Создаем колонки
+  // Create Column
   vdtHuePreview.BeginUpdate;
   vdtHuePreview.Header.Columns.Clear;
   vdtHuePreview.Header.Columns.DefaultWidth := ItemWidth + 2;
   for cn := 0 to cols do
     vdtHuePreview.Header.Columns.Add;
 
-  // Создаем ячейки
+  // Create a cell
   vdtHuePreview.Clear;
 
   vdtHuePreview.Tag := ItemID;
@@ -668,12 +668,12 @@ begin
     hue := nil;
     if (PaintInfo.Node <> Sender.GetFirst()) then begin
       PaintInfo.Canvas.Brush.Color := vdtHuePreview.Color;
-      exit; // Не рисуем ячейки без цвета если они не в первом ряду
+      exit; // Do not draw a cell without color if they are not in the first row
     end;
   end else hue := ResMan.Hue.Hues[info^.ID[PaintInfo.Column] - 1];
 
   if ResMan.Art.Exists(id) then begin
-    // Определяем цвет подсветки (т.е. выделен ли тайл)
+    // Determine the illumination color (ie, recovered the tile)
     {mpos := vdtHuePreview.ScreenToClient(Mouse.CursorPos);
     if  (vdtHuePreview.GetNodeAt(mpos.x, mpos.y) = PaintInfo.Node)
     and ((mpos.x div vdtHuePreview.Header.Columns.DefaultWidth) = PaintInfo.Column)
@@ -731,7 +731,7 @@ begin
     edHue.Text := Format('$%x', [hues]);
     edHueEditingDone(Sender);
 
-    FormShow(Sender); // Закрываем окно и возвращаемся обратно
+    FormShow(Sender); // Close the window and return back
     Top  := LastFormPosition.y;
     Left := LastFormPosition.x;
     mpos.x := ImagePreviewItem.Width  div 2;

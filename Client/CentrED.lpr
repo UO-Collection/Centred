@@ -21,7 +21,8 @@
  * CDDL HEADER END
  *
  *
- *      Portions Copyright 2010 Andreas Schneider
+ *      Portions Copyright 2015 Andreas Schneider
+ *      Portions Copyright 2015 StaticZ
  *)
 program CentrED;
 
@@ -33,7 +34,7 @@ uses
   {$ENDIF}{$ENDIF}
   Classes, SysUtils,
   Interfaces, // this includes the LCL widgetset
-  Forms, Dialogs, Windows, UdmNetwork, UResourceManager;
+  LCLType, Forms, Dialogs, UdmNetwork, UResourceManager, Graphics;
 
 {$R CentrED.res}
 //{$R CentrED.manifest.rc}
@@ -62,13 +63,14 @@ type
   end;
 var
   stream: TStream;
-  dwSize: Integer;
+  (*dwSize: Integer;
   buffer: array of Byte;
   header: TIconHeader;
-  icoinf: TIconInfo;
+  icoinf: TIconInfo;  *) //TODO Cleanup
+  cursorImage: TCursorImage;
 begin
   stream := ResourceManager.GetResource(AFileName);
-  dwSize := stream.Size;
+  (*dwSize := stream.Size;
   SetLength(buffer, dwSize + 8);
   stream.Read(buffer[0], dwSize);
   if not CurFormat then
@@ -80,28 +82,34 @@ begin
     CopyMemory(@buffer[icoinf.iOffset-4], @icoinf.iHotspotX, 2);
     CopyMemory(@buffer[icoinf.iOffset-2], @icoinf.iHotspotY, 2);
     Result := HCURSOR(CreateIconFromResource(@buffer[icoinf.iOffset-4], icoinf.iSize+4, False, $00030000))
+  end;*)
+  try
+    cursorImage := TCursorImage.Create;
+    cursorImage.LoadFromStream(stream);
+    Result := cursorImage.ReleaseHandle;
+  finally
+    cursorImage.Free;
   end;
 end;
-
 
 begin
   Application.Title:='CentrED+';
   OnGetApplicationName := @GetApplicationName;
   Application.Initialize;
-  if LowerCase(ChangeFileExt(ExtractFileName(ParamStr(0)), '')) <> LowerCase(GetApplicationName) then
+  {if LowerCase(ChangeFileExt(ExtractFileName(ParamStr(0)), '')) <> LowerCase(GetApplicationName) then
   begin
-    MessageDlg('Ошибка', 'Исполняемый файл был переименован. Переименуйте ' +
-                         'файл следующим образом: "' +
+    MessageDlg('Bug', 'The executable file has been renamed. Rename ' +
+                         'file as follows: "' +
                          GetApplicationName + '.exe"', mtError, [mbOK], 0);
     Application.Terminate;
-  end;
+  end;} //TODO Why?
 
   if Paramcount = 1 then begin
-    MessageDlg('Параметры запуска', ParamStr(1), mtError, [mbOK], 0);
+    MessageDlg('Startup options', ParamStr(1), mtError, [mbOK], 0);
   end;
 
 
-  // Загрузка курсоров ...
+  // Loading cursors ...
   Screen.Cursors[-02] := LoadCursorFromRes('Cursors/BC_NormalSelect.cur');         //crArrow
   Screen.Cursors[-19] := LoadCursorFromRes('Cursors/BC_WorkingInBackground.cur');  //crAppStart
   Screen.Cursors[-20] := LoadCursorFromRes('Cursors/BC_HelpSelect.cur');           //crHelp
@@ -111,7 +119,7 @@ begin
 
   Screen.Cursors[-03] := LoadCursorFromRes('Cursors/BC_PrecisionSelect.cur');      //crCross
   Screen.Cursors[-04] := LoadCursorFromRes('Cursors/BC_TextSelect.cur');           //crIBeam
-  Screen.Cursors[-11] := LoadCursorFromRes('Cursors/BI_Busy.ani', False);          //crHourGlass
+  //TODO Screen.Cursors[-11] := LoadCursorFromRes('Cursors/BI_Busy.ani', False);          //crHourGlass
   Screen.Cursors[-18] := LoadCursorFromRes('Cursors/TN_Unavailable.cur');          //crNo
 
   Screen.Cursors[-22] := LoadCursorFromRes('Cursors/BC_Move.cur');                 //crSize
@@ -128,7 +136,7 @@ begin
   Screen.Cursors[+02] := LoadCursorFromRes('Cursors/UO_AttackMode.cur');
   Screen.Cursors[+03] := LoadCursorFromRes('Cursors/UO_Gauntlet.cur');
 
-  // Запуск программы...
+  // Run the program...
   Application.CreateForm(TdmNetwork, dmNetwork);
   Application.Run;
 end.

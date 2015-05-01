@@ -21,7 +21,8 @@
  * CDDL HEADER END
  *
  *
- *      Portions Copyright 2009 Andreas Schneider
+ *      Portions Copyright 2015 Andreas Schneider
+ *      Portions Copyright 2015 StaticZ
  *)
 unit UfrmLogin;
 
@@ -32,7 +33,7 @@ interface
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Spin, EditBtn, Buttons, IniFiles, LConvEncoding, LazHelpHTML,
-  ShellAPI, Registry, AeroGlass;
+  Registry;
 
 type
 
@@ -141,17 +142,18 @@ var
   settings: TIniFile;
   ARegistry: TRegistry;
 begin
-  // Загрузка настроек
-  ARegistry := TRegistry.Create();
+  // Download settings
+  configDir := GetAppConfigDir(False);
+  (*ARegistry := TRegistry.Create();
   ARegistry.RootKey := HKEY_LOCAL_MACHINE;
   ARegistry.OpenKey('\SOFTWARE\Quintessence\UO CentrED+', False);
   if ARegistry.ReadBool('UseConfigDir')
     then configDir := GetAppConfigDir(False)
     else configDir := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName))
                       + '..' + PathDelim + 'LocalData' + PathDelim + 'UsersData' + PathDelim ;
-  ARegistry.Free;
+  ARegistry.Free;*) //TODO cross platform?
 
-  // Сохранение настроек
+  // Save settings
   settings := TIniFile.Create(configDir + 'LoginSettings.ini');
   settings.WriteString('Connection', 'Host', edHost.Text);
   settings.WriteInteger('Connection', 'Port', edPort.Value);
@@ -167,7 +169,7 @@ begin
      settings.WriteString('Profile', 'Lang', '');
   settings.Free;
   {
-  // Проверка путей
+  // Check tracks
   path := IncludeTrailingPathDelimiter(UTF8ToCP1251(edData.Text));
   if (not FileExists(path + 'art.mul')) or
      (not FileExists(path + 'artidx.mul')) or                 LangDirectory := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName)) + PathDelim + 'Language' + PathDelim;
@@ -185,7 +187,7 @@ begin
     edData.SetFocus;
   end else }
     ModalResult := mrOK;
-  Logger.Send([lcClient, lcInfo], 'Начинаем соеденинение с сервером');
+  Logger.Send([lcClient, lcInfo], 'Logging into server');
 end;
 
 procedure TfrmLogin.btnSaveProfileClick(Sender: TObject);
@@ -249,7 +251,7 @@ end;
 
 procedure TfrmLogin.FormActivate(Sender: TObject);
 begin
-  GlassForm(frmLogin);
+  //TODO ? GlassForm(frmLogin);
 end;
 
 procedure TfrmLogin.FormClose(Sender: TObject; var CloseAction: TCloseAction);
@@ -281,15 +283,16 @@ begin
   BanerMouseLeave(Sender);
   edData.DialogTitle:=lblData.Caption;
 
-  // Загрузка настроек
-  ARegistry := TRegistry.Create();
+  // Download settings
+  configDir := GetAppConfigDir(False);
+  (*ARegistry := TRegistry.Create();
   ARegistry.RootKey := HKEY_LOCAL_MACHINE;
   ARegistry.OpenKey('\SOFTWARE\Quintessence\UO CentrED+', False);
   if ARegistry.ReadBool('UseConfigDir')
     then configDir := GetAppConfigDir(False)
     else configDir := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName))
                       + '..' + PathDelim + 'LocalData' + PathDelim + 'UsersData' + PathDelim ;
-  ARegistry.Free;
+  ARegistry.Free;*) //TODO Cross platform?
 
   sprofile := '';
   iniSettings := TIniFile.Create(configDir + 'LoginSettings.ini');
@@ -325,7 +328,7 @@ begin
 
   iniSettings.Free;
 
-  // Загрузка локализаций
+  // Download locations
   LangDirectory := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName))
                    + PathDelim + '..' + PathDelim +'Language' + PathDelim;
   LanguageLoad(Self, lastLanguage, LangDirectory);
@@ -338,8 +341,8 @@ end;
 
 procedure TfrmLogin.BanerClick(Sender: TObject);
 begin
-  // Открываем сайт в браузере по умолчанию
-  ShellExecute(Handle, 'open', PChar('http://dev.uoquint.ru'), nil, nil, 1 {SW_SHOWNORMAL});
+  // Open the site in the default browser
+  //TODO ShellExecute(Handle, 'open', PChar('http://dev.uoquint.ru'), nil, nil, 1 {SW_SHOWNORMAL});
 end;
 
 procedure TfrmLogin.BanerDrawImage(baner : array of Byte);
@@ -356,7 +359,7 @@ end;
 //function GetTickCount:DWORD; external 'kernel32' name 'GetTickCount';
 procedure TfrmLogin.BanerAnimTimer(Sender: TObject);
 var NowsTickCount : DWORD;
-begin { Таймер и GetTickCount вообще не работают!!!
+begin { GetTickCount timer does not work!!!
   NowsTickCount := GetTickCount;
   if (NowsTickCount - LastTickCount) < 10000 then exit;
   LastTickCount := NowsTickCount;

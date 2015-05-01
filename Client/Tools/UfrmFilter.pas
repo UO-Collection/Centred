@@ -31,8 +31,8 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ExtCtrls, VirtualTrees, VirtualList, LCLIntf, LMessages, Buttons, UPlatformTypes,
-  UStatics, Menus, Windows, Logging;
+  ExtCtrls, VirtualTrees, VirtualList, LCLIntf, LCLType, LMessages, Buttons,
+  UPlatformTypes, UStatics, Menus, Logging;
 
 type
 

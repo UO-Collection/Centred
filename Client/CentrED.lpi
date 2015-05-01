@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
     <Version Value="9"/>
@@ -21,15 +21,15 @@
       <AutoIncrementBuild Value="True"/>
       <MinorVersionNr Value="7"/>
       <RevisionNr Value="8"/>
-      <BuildNr Value="1759"/>
+      <BuildNr Value="1760"/>
       <Language Value="0419"/>
       <StringTable CompanyName="www.uoquint.ru" FileDescription="UO CentrED+" InternalName="CentrED+" LegalCopyright="StaticZ" OriginalFilename="CentrED-plus.exe" ProductName="CentrED+" ProductVersion="0.7.8"/>
     </VersionInfo>
-    <BuildModes Count="4">
+    <BuildModes Count="5">
       <Item1 Name="default" Default="True"/>
       <Item2 Name="Release Win32">
         <CompilerOptions>
-          <Version Value="9"/>
+          <Version Value="11"/>
           <Target>
             <Filename Value="../bin/PEBinaries/CentrED-plus (x32).exe"/>
           </Target>
@@ -38,7 +38,6 @@
             <OtherUnitFiles Value="..;../UOLib;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;Tools"/>
             <UnitOutputDirectory Value="../obj/win32"/>
             <SrcPath Value="$(LazarusDir)/lcl;$(LazarusDir)/lcl/interfaces/$(LCLWidgetType);..;../UOLib;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;Tools"/>
-            <LCLWidgetType Value="win32"/>
           </SearchPaths>
           <Parsing>
             <SyntaxOptions>
@@ -56,6 +55,7 @@
           </CodeGeneration>
           <Linking>
             <Debugging>
+              <GenerateDebugInfo Value="False"/>
               <UseLineInfoUnit Value="False"/>
               <StripSymbols Value="True"/>
             </Debugging>
@@ -68,18 +68,16 @@
           </Linking>
           <Other>
             <CompilerMessages>
-              <IgnoredMessages idx4079="True" idx4080="True" idx4081="True" idx5024="True" idx5028="True"/>
-              <UseMsgFile Value="True"/>
+              <IgnoredMessages idx5028="True" idx5024="True" idx4081="True" idx4080="True" idx4079="True"/>
             </CompilerMessages>
             <CustomOptions Value="-FE../bin/PEBinaries/
 -dNoLogging"/>
-            <CompilerPath Value="$(CompPath)"/>
           </Other>
         </CompilerOptions>
       </Item2>
       <Item3 Name="Release Win64">
         <CompilerOptions>
-          <Version Value="9"/>
+          <Version Value="11"/>
           <Target>
             <Filename Value="../bin/PEBinaries/CentrED-plus (x64).exe"/>
           </Target>
@@ -88,7 +86,6 @@
             <OtherUnitFiles Value="..;../UOLib;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;Tools"/>
             <UnitOutputDirectory Value="../obj/win64"/>
             <SrcPath Value="$(LazarusDir)/lcl;$(LazarusDir)/lcl/interfaces/$(LCLWidgetType);..;../UOLib;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;Tools"/>
-            <LCLWidgetType Value="win32"/>
           </SearchPaths>
           <Parsing>
             <SyntaxOptions>
@@ -106,6 +103,7 @@
           </CodeGeneration>
           <Linking>
             <Debugging>
+              <GenerateDebugInfo Value="False"/>
               <UseLineInfoUnit Value="False"/>
               <StripSymbols Value="True"/>
             </Debugging>
@@ -118,26 +116,24 @@
           </Linking>
           <Other>
             <CompilerMessages>
-              <IgnoredMessages idx4079="True" idx4080="True" idx4081="True" idx5024="True" idx5028="True"/>
-              <UseMsgFile Value="True"/>
+              <IgnoredMessages idx5028="True" idx5024="True" idx4081="True" idx4080="True" idx4079="True"/>
             </CompilerMessages>
             <CustomOptions Value="-FE../bin/PEBinaries/
 -dNoLogging"/>
-            <CompilerPath Value="$(CompPath)"/>
           </Other>
         </CompilerOptions>
       </Item3>
       <Item4 Name="Release Linux GTK2 x86">
         <CompilerOptions>
-          <Version Value="9"/>
+          <Version Value="11"/>
           <Target>
             <Filename Value="../bin/PEBinaries/CentrED-plus"/>
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir);../Imaging;.."/>
-            <OtherUnitFiles Value="..;../UOLib;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;Tools"/>
+            <OtherUnitFiles Value="..;../UOLib;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;Tools;GUI"/>
             <UnitOutputDirectory Value="../obj/$(TargetCPU)-$(TargetOS)"/>
-            <SrcPath Value="$(LazarusDir)/lcl;$(LazarusDir)/lcl/interfaces/$(LCLWidgetType);..;../UOLib;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;Tools"/>
+            <SrcPath Value="$(LazarusDir)/lcl;$(LazarusDir)/lcl/interfaces/$(LCLWidgetType)"/>
           </SearchPaths>
           <Parsing>
             <SyntaxOptions>
@@ -154,6 +150,7 @@
           </CodeGeneration>
           <Linking>
             <Debugging>
+              <GenerateDebugInfo Value="False"/>
               <UseLineInfoUnit Value="False"/>
               <StripSymbols Value="True"/>
             </Debugging>
@@ -166,15 +163,60 @@
           </Linking>
           <Other>
             <CompilerMessages>
-              <IgnoredMessages idx4079="True" idx4080="True" idx4081="True" idx5024="True" idx5028="True"/>
-              <UseMsgFile Value="True"/>
+              <IgnoredMessages idx5028="True" idx5024="True" idx4081="True" idx4080="True" idx4079="True"/>
             </CompilerMessages>
             <CustomOptions Value="-FE../bin/PEBinaries/
 -dNoLogging"/>
-            <CompilerPath Value="$(CompPath)"/>
           </Other>
         </CompilerOptions>
       </Item4>
+      <Item5 Name="Release Linux GTK2 x64">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <Target>
+            <Filename Value="../bin/PEBinaries/CentrED-plus"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir);../Imaging;.."/>
+            <OtherUnitFiles Value="..;../UOLib;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;Tools;GUI"/>
+            <UnitOutputDirectory Value="../obj/$(TargetCPU)-$(TargetOS)"/>
+            <SrcPath Value="$(LazarusDir)/lcl;$(LazarusDir)/lcl/interfaces/$(LCLWidgetType)"/>
+          </SearchPaths>
+          <Parsing>
+            <SyntaxOptions>
+              <CStyleOperator Value="False"/>
+            </SyntaxOptions>
+          </Parsing>
+          <CodeGeneration>
+            <SmartLinkUnit Value="True"/>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="linux"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+              <UseLineInfoUnit Value="False"/>
+              <StripSymbols Value="True"/>
+            </Debugging>
+            <LinkSmart Value="True"/>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+          <Other>
+            <CompilerMessages>
+              <IgnoredMessages idx5028="True" idx5024="True" idx4081="True" idx4080="True" idx4079="True"/>
+            </CompilerMessages>
+            <CustomOptions Value="-FE../bin/PEBinaries/
+-dNoLogging"/>
+          </Other>
+        </CompilerOptions>
+      </Item5>
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
@@ -215,21 +257,19 @@
       <Unit0>
         <Filename Value="CentrED.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="CentrED"/>
       </Unit0>
       <Unit1>
         <Filename Value="UfrmMain.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmMain"/>
+        <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmMain"/>
       </Unit1>
       <Unit2>
         <Filename Value="UdmNetwork.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="dmNetwork"/>
         <ResourceBaseClass Value="DataModule"/>
-        <UnitName Value="UdmNetwork"/>
       </Unit2>
       <Unit3>
         <Filename Value="UfrmLogin.pas"/>
@@ -243,118 +283,101 @@
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmInitialize"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmInitialize"/>
       </Unit4>
       <Unit5>
         <Filename Value="UfrmAccountControl.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmAccountControl"/>
+        <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmAccountControl"/>
       </Unit5>
       <Unit6>
         <Filename Value="UfrmEditAccount.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmEditAccount"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmEditAccount"/>
       </Unit6>
       <Unit7>
         <Filename Value="Tools/UfrmDrawSettings.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmDrawSettings"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmDrawSettings"/>
       </Unit7>
       <Unit8>
         <Filename Value="Tools/UfrmBoundaries.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmBoundaries"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmBoundaries"/>
       </Unit8>
       <Unit9>
         <Filename Value="Tools/UfrmElevateSettings.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmElevateSettings"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmElevateSettings"/>
       </Unit9>
       <Unit10>
         <Filename Value="UOverlayUI.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UOverlayUI"/>
       </Unit10>
       <Unit11>
         <Filename Value="UResourceManager.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UResourceManager"/>
       </Unit11>
       <Unit12>
         <Filename Value="Tools/UfrmConfirmation.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmConfirmation"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmConfirmation"/>
       </Unit12>
       <Unit13>
         <Filename Value="Tools/UfrmMoveSettings.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmMoveSettings"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmMoveSettings"/>
       </Unit13>
       <Unit14>
         <Filename Value="UfrmAbout.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmAbout"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmAbout"/>
       </Unit14>
       <Unit15>
         <Filename Value="Tools/UfrmHueSettings.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmHueSettings"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmHueSettings"/>
       </Unit15>
       <Unit16>
         <Filename Value="UfrmRadar.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmRadarMap"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmRadar"/>
       </Unit16>
       <Unit17>
         <Filename Value="UfrmLargeScaleCommand.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmLargeScaleCommand"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmLargeScaleCommand"/>
       </Unit17>
       <Unit18>
         <Filename Value="Tools/UfrmVirtualLayer.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmVirtualLayer"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmVirtualLayer"/>
       </Unit18>
       <Unit19>
         <Filename Value="Tools/UfrmFilter.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmFilter"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmFilter"/>
       </Unit19>
       <Unit20>
         <Filename Value="UGUIPlatformUtils.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UGUIPlatformUtils"/>
       </Unit20>
       <Unit21>
         <Filename Value="UPlatformTypes.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UPlatformTypes"/>
       </Unit21>
       <Unit22>
         <Filename Value="UfrmRegionControl.pas"/>
@@ -362,99 +385,80 @@
         <ComponentName Value="frmRegionControl"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmRegionControl"/>
       </Unit22>
       <Unit23>
         <Filename Value="UPacketHandlers.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UPacketHandlers"/>
       </Unit23>
       <Unit24>
         <Filename Value="UPackets.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UPackets"/>
       </Unit24>
       <Unit25>
         <Filename Value="ULandscape.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="ULandscape"/>
       </Unit25>
       <Unit26>
         <Filename Value="UGameResources.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UGameResources"/>
       </Unit26>
       <Unit27>
         <Filename Value="UAdminHandling.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UAdminHandling"/>
       </Unit27>
       <Unit28>
         <Filename Value="Tools/UfrmToolWindow.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmToolWindow"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmToolWindow"/>
       </Unit28>
       <Unit29>
         <Filename Value="../Logging.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="Logging"/>
       </Unit29>
       <Unit30>
         <Filename Value="../UOLib/UStatics.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UStatics"/>
       </Unit30>
       <Unit31>
         <Filename Value="../UOLib/UWorldItem.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UWorldItem"/>
       </Unit31>
       <Unit32>
         <Filename Value="../UOLib/UMap.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UMap"/>
       </Unit32>
       <Unit33>
         <Filename Value="../UOLib/UTiledata.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UTiledata"/>
       </Unit33>
       <Unit34>
         <Filename Value="UGLFont.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UGLFont"/>
       </Unit34>
       <Unit35>
         <Filename Value="../UOLib/UAnimData.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UAnimData"/>
       </Unit35>
       <Unit36>
         <Filename Value="../MulProvider/UTileDataProvider.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UTileDataProvider"/>
       </Unit36>
       <Unit37>
         <Filename Value="../MulProvider/UAnimDataProvider.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UAnimDataProvider"/>
       </Unit37>
       <Unit38>
         <Filename Value="../MulProvider/UMulManager.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UMulManager"/>
       </Unit38>
       <Unit39>
         <Filename Value="../MulProvider/UArtProvider.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UArtProvider"/>
       </Unit39>
       <Unit40>
         <Filename Value="../MulProvider/UTexmapProvider.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UTexmapProvider"/>
       </Unit40>
       <Unit41>
         <Filename Value="../version.inc"/>
@@ -463,44 +467,36 @@
       <Unit42>
         <Filename Value="ULightManager.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="ULightManager"/>
       </Unit42>
       <Unit43>
         <Filename Value="../UOLib/ULight.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="ULight"/>
       </Unit43>
       <Unit44>
         <Filename Value="../MulProvider/ULightProvider.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="ULightProvider"/>
       </Unit44>
       <Unit45>
         <Filename Value="Tools/UfrmLightlevel.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmLightlevel"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmLightlevel"/>
       </Unit45>
       <Unit46>
         <Filename Value="../UEnhancedMemoryStream.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UEnhancedMemoryStream"/>
       </Unit46>
       <Unit47>
         <Filename Value="UndoRedoCmd.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UndoRedoCmd"/>
       </Unit47>
       <Unit48>
         <Filename Value="../UOLib/UArt.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UArt"/>
       </Unit48>
       <Unit49>
         <Filename Value="../vinfo.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="vinfo"/>
       </Unit49>
       <Unit50>
         <Filename Value="language.pas"/>
@@ -513,7 +509,6 @@
         <ComponentName Value="frmFillSettings"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmFillSettings"/>
       </Unit51>
       <Unit52>
         <Filename Value="Tools/UfrmSelectionSettings.pas"/>
@@ -521,7 +516,6 @@
         <ComponentName Value="frmSelectionSettings"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmSelectionSettings"/>
       </Unit52>
       <Unit53>
         <Filename Value="Tools/UfrmSurfStretchSettings.pas"/>
@@ -529,7 +523,6 @@
         <ComponentName Value="frmSurfStretchSettings"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmSurfStretchSettings"/>
       </Unit53>
       <Unit54>
         <Filename Value="Tools/UfrmSurfElevateSettings.pas"/>
@@ -537,7 +530,6 @@
         <ComponentName Value="frmSurfElevateSettings"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmSurfElevateSettings"/>
       </Unit54>
       <Unit55>
         <Filename Value="Tools/UfrmSurfSmoothSettings.pas"/>
@@ -545,40 +537,34 @@
         <ComponentName Value="frmSurfSmoothSettings"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="UfrmSurfSmoothSettings"/>
       </Unit55>
       <Unit56>
         <Filename Value="Crc32Hash.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="Crc32Hash"/>
       </Unit56>
       <Unit57>
         <Filename Value="../UOLib/UUopFile.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UUopFile"/>
       </Unit57>
       <Unit58>
         <Filename Value="GUI/AeroGlass.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="AeroGlass"/>
       </Unit58>
       <Unit59>
         <Filename Value="GUI/VirtualList.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="VirtualList"/>
       </Unit59>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
-    <Version Value="9"/>
+    <Version Value="11"/>
     <Target>
-      <Filename Value="../bin/PEBinaries/CentrED-plus.exe"/>
+      <Filename Value="../bin/PEBinaries/CentrED-plus"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="..;../obj;../Imaging;$(ProjOutDir)"/>
       <OtherUnitFiles Value="Tools;..;../UOLib;../Server;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;GUI"/>
       <UnitOutputDirectory Value="../obj"/>
-      <LCLWidgetType Value="win32"/>
     </SearchPaths>
     <Parsing>
       <SyntaxOptions>
@@ -590,16 +576,13 @@
         <RangeChecks Value="True"/>
         <OverflowChecks Value="True"/>
       </Checks>
-      <TargetProcessor Value="pentium4"/>
-      <TargetCPU Value="i386"/>
-      <TargetOS Value="win32"/>
       <Optimizations>
         <OptimizationLevel Value="3"/>
       </Optimizations>
     </CodeGeneration>
     <Linking>
       <Debugging>
-        <GenerateDebugInfo Value="True"/>
+        <DebugInfoType Value="dsStabs"/>
       </Debugging>
       <Options>
         <Win32>
@@ -609,12 +592,10 @@
     </Linking>
     <Other>
       <CompilerMessages>
-        <IgnoredMessages idx4079="True" idx4080="True" idx4081="True" idx5024="True" idx5028="True"/>
-        <UseMsgFile Value="True"/>
+        <IgnoredMessages idx5028="True" idx5024="True" idx4081="True" idx4080="True" idx4079="True"/>
       </CompilerMessages>
       <CustomOptions Value="-FE../bin/PEBinaries/
 +-dNoLogging"/>
-      <CompilerPath Value="$(CompPath)"/>
     </Other>
   </CompilerOptions>
 </CONFIG>

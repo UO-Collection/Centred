@@ -36,7 +36,7 @@ uses
   UWorldItem, LCLIntf, UOverlayUI, UStatics, UEnhancedMemoryStream, ActnList,
   XMLPropStorage, LazHelpHTML, fgl, ImagingClasses, dateutils, UPlatformTypes,
   UMap, UPacket, UGLFont, DOM, XMLRead, XMLWrite, strutils, ULightManager,
-  UndoRedoCmd, ShellAPI, ImagingTypes, ImagingCanvases, types, Registry,
+  UndoRedoCmd, ImagingTypes, ImagingCanvases, types, Registry,
   IniFiles, LMessages;
 
 const
@@ -1616,7 +1616,9 @@ begin
   //oglGameWindow.Visible:= false;
   //oglGameWindowResize(Sender);
 
-  ARegistry := TRegistry.Create();
+  FConfigDir := GetAppConfigDir(False);
+
+  (*ARegistry := TRegistry.Create();
   ARegistry.RootKey := HKEY_LOCAL_MACHINE;
   ARegistry.OpenKey('\SOFTWARE\Quintessence\UO CentrED+', False);
 
@@ -1625,7 +1627,7 @@ begin
   if ARegistry.ReadBool('UseConfigDir')
     then FConfigDir := GetAppConfigDir(False)
     else FConfigDir := FLocalDir + 'UsersData' + PathDelim;
-  ARegistry.Free;
+  ARegistry.Free;*) //TODO cross platform
 
   if (sprofile <> '')
     then FProfileDir := FConfigDir + 'Profiles' + PathDelim + UTF8ToCP1251(sprofile) + PathDelim
@@ -2270,7 +2272,7 @@ end;
 
 //procedure ssrSaveHandle(handle: HWND; filepath: PChar);  external  'SSRender';
   //function GetDesktopWindow(): HWND; external  'SSRender';
-function GetDesktopWindow:HWND; external 'user32' name 'GetDesktopWindow';
+//function GetDesktopWindow:HWND; external 'user32' name 'GetDesktopWindow';
 procedure TfrmMain.mnuMakeScreenShotClick(Sender: TObject);
 var
   Bitmap: TBitmap;
@@ -2285,35 +2287,35 @@ var
 begin
   Bitmap:= TBitmap.Create;
   Image := TJPEGImage.Create;
-  // Снимаем фокус с окна (чтобы убрать стрелочки)
+  // We remove the focus from the window (to remove the arrows)
   Refocus := oglGameWindow.Focused;
   if Refocus then begin
     oglGameWindowMouseLeave(Sender);
     oglGameWindow.Paint;
   end;
-  // Получение контекстного устройства
+  // Obtaining device context
   oglGameWindow.HandleNeeded;
-  ScreenWND := GetDesktopWindow();// oglGameWindow.Handle; //Handle;//0;//
+  //TODO : ScreenWND := GetDesktopWindow();// oglGameWindow.Handle; //Handle;//0;//
   ScreenDC := GetDC(ScreenWND);   //GetDeviceContext(ScreenWND);
   if ScreenDC<>0 then try
-    // Получаем "буффер" экрана
+    // We get the "buffer" screen
     Bitmap.LoadFromDevice(ScreenDC);
-    // Размеры сохраняемого изображения
+    // The size of the stored image
     destRect.Left  :=0;
     destRect.Top   :=0;
     destRect.Right :=oglGameWindow.Width;
     destRect.Bottom:=oglGameWindow.Height;
     Image.SetSize(destRect.Right, destRect.Bottom);
-    // Сохраняемая область на экране
+    // Keep the area on the screen
     oglPoint.x := 0;  oglPoint.y := 0;
     oglPoint := oglGameWindow.ClientToScreen(oglPoint);
     srcRect.Left   := oglPoint.x;
     srcRect.Top    := oglPoint.y;
     srcRect.Right  := srcRect.Left + destRect.Right;
     srcRect.Bottom := srcRect.Top  + destRect.Bottom;
-    // Копируем область с экрана на сохраняемое изображение
+    // Copy the area from the screen to the stored image
     Image.Canvas.CopyRect(destRect, Bitmap.Canvas, srcRect);
-    // Сохраняем файл
+    // Save the file
     DateTime := Now;
     FolderPath := FAppDir + '../ScreenShots/' + FormatDateTime('YYYY-MM-DD', DateTime) + '/';
     ForceDirectories(FolderPath);
@@ -2327,7 +2329,7 @@ begin
     Image.Free;
   end else
     MessageDlg(lbDlgGetDcErrCaption, lbDlgGetDcErr, mtError, [mbOK], 0);
-  // Возвращаем обратно фокус окна (если надо)
+  // Return back to the focus window (if necessary)
   if Refocus then begin
     oglGameWindowMouseEnter(Sender);
     oglGameWindow.Paint;
@@ -2908,22 +2910,22 @@ end;
 
 procedure TfrmMain.mnuDocsClick(Sender: TObject);
 begin
-  ShellExecute(Handle, 'open', PChar('http://dev.uoquint.ru/projects/centred/wiki'), nil, nil, 1 {SW_SHOWNORMAL});
+  //TODO ShellExecute(Handle, 'open', PChar('http://dev.uoquint.ru/projects/centred/wiki'), nil, nil, 1 {SW_SHOWNORMAL});
 end;
 
 procedure TfrmMain.mnuRusComClick(Sender: TObject);
 begin
-  ShellExecute(Handle, 'open', PChar('http://forum.uokit.com/index.php?showforum=207'), nil, nil, 1 {SW_SHOWNORMAL});
+  //TODO ShellExecute(Handle, 'open', PChar('http://forum.uokit.com/index.php?showforum=207'), nil, nil, 1 {SW_SHOWNORMAL});
 end;
 
 procedure TfrmMain.mnuEng2ComClick(Sender: TObject);
 begin
-  ShellExecute(Handle, 'open', PChar('http://craftuo.com/threads/centred.888'), nil, nil, 1 {SW_SHOWNORMAL});
+  //TODO ShellExecute(Handle, 'open', PChar('http://craftuo.com/threads/centred.888'), nil, nil, 1 {SW_SHOWNORMAL});
 end;
 
 procedure TfrmMain.mnuEngComClick(Sender: TObject);
 begin
-  ShellExecute(Handle, 'open', PChar('http://board.uoquint.ru/'), nil, nil, 1 {SW_SHOWNORMAL});
+  //TODO ShellExecute(Handle, 'open', PChar('http://board.uoquint.ru/'), nil, nil, 1 {SW_SHOWNORMAL});
 end;
 
 procedure TfrmMain.oglGameWindowPaint(Sender: TObject);

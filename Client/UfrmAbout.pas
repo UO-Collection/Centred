@@ -31,7 +31,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ExtCtrls, ShellAPI, MMSystem;
+  ExtCtrls;
 
 type
 
@@ -106,21 +106,21 @@ begin
     GetMem(pSound, stream.Size);
     stream.Read(pSound^, stream.Size);
   end;
-  sndPlaySound(pSound, SND_MEMORY or SND_ASYNC or SND_LOOP);
+  //TODO: sndPlaySound(pSound, SND_MEMORY or SND_ASYNC or SND_LOOP);
 end;
 
 procedure TfrmAbout.FormHide(Sender: TObject);
 begin
   if pSound = nil then Exit;
-  sndPlaySound(nil, SND_ASYNC or SND_LOOP);
+  //TODO: sndPlaySound(nil, SND_ASYNC or SND_LOOP);
   FreeMem(pSound);
   pSound := nil;
 end;
 
 procedure TfrmAbout.imgBanerClick(Sender: TObject);
 begin
-  // Открываем сайт в браузере по умолчанию
-  ShellExecute(Handle, 'open', PChar('http://uoquint.ru'), nil, nil, 1 {SW_SHOWNORMAL});
+  //Open the site in the default browser
+  //TODO: ShellExecute(Handle, 'open', PChar('http://uoquint.ru'), nil, nil, 1 {SW_SHOWNORMAL});
 end;
 
 procedure TfrmAbout.imgBanerMouseEnter(Sender: TObject);
@@ -146,8 +146,8 @@ end;
 
 procedure TfrmAbout.lblWebLinkClick(Sender: TObject);
 begin
-  // Открываем сайт в браузере по умолчанию
-  ShellExecute(Handle, 'open', PChar('http://dev.uoquint.ru/projects/centred'), nil, nil, 1 {SW_SHOWNORMAL});
+  //Open the site in the default browser
+  //ShellExecute(Handle, 'open', PChar('http://dev.uoquint.ru/projects/centred'), nil, nil, 1 {SW_SHOWNORMAL});
 end;
 
 procedure TfrmAbout.lblWebLinkMouseEnter(Sender: TObject);

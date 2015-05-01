@@ -21,7 +21,8 @@
  * CDDL HEADER END
  *
  *
- *      Portions Copyright 2007 Andreas Schneider
+ *      Portions Copyright 2015 Andreas Schneider
+ *      Portions Copyright 2015 StaticZ
  *)
 unit UPackets;
 
@@ -139,7 +140,7 @@ begin
     begin
       subscriptions := CEDServerInstance.Landscape.BlockSubscriptions[ACoords[i].X, ACoords[i].Y];
       subscriptions.Delete(ANetState);
-      subscriptions.Add(Integer(ANetState), ANetState);
+      subscriptions.Add(PtrInt(ANetState), ANetState);
       if ANetState.Subscriptions.IndexOf(subscriptions) = -1 then
         ANetState.Subscriptions.Add(subscriptions);
     end;
