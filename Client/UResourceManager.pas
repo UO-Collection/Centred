@@ -30,7 +30,7 @@ unit UResourceManager;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils, Crc32Hash;
   
 type
 
@@ -43,10 +43,12 @@ type
     FFileStream: TFileStream;
     FCount: Integer;
     FLookupTable: array of Cardinal;
+    FfnHashTable: array of Cardinal;
     FCurrentResource: Integer;
     FResourceStream: TMemoryStream;
   public
     function GetResource(AIndex: Integer): TStream;
+    function GetResource(AFileName: String): TStream;
   end;
   
 var
@@ -63,7 +65,9 @@ begin
   FFileStream.Position := 0;
   FFileStream.Read(FCount, SizeOf(Integer));
   SetLength(FLookupTable, FCount);
+  SetLength(FfnHashTable, FCount);
   FFileStream.Read(FLookupTable[0], FCount * SizeOf(Cardinal));
+  FFileStream.Read(FfnHashTable[0], FCount * SizeOf(Cardinal));
   FCurrentResource := -1;
 end;
 
@@ -72,6 +76,22 @@ begin
   FreeAndNil(FFileStream);
   FreeAndNil(FResourceStream);
   inherited Destroy;
+end;
+
+function TResourceManager.GetResource(AFileName: String): TStream;
+var
+  i    : Integer;
+  hash : DWORD;
+begin
+  if not CalcStringCRC32(AnsiLowerCase(AFileName), hash)
+  then Result := nil
+  else begin
+    for i := 0 to FCount do
+      if FfnHashTable[i] = hash then begin
+        Result := GetResource(i);
+        break;
+      end;
+  end;
 end;
 
 function TResourceManager.GetResource(AIndex: Integer): TStream;
@@ -93,7 +113,7 @@ end;
 
 initialization
 begin
-  ResourceManager := TResourceManager.Create(ChangeFileExt(ParamStr(0), '.dat'));
+  ResourceManager := TResourceManager.Create(ExtractFilePath(ParamStr(0)) + '../Assetspack.dat');
 end;
 
 finalization

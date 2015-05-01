@@ -30,7 +30,7 @@ unit UGameResources;
 interface
 
 uses
-  Classes, SysUtils, UArtProvider, UTileDataProvider, UTexmapProvider,
+  Classes, SysUtils, Dialogs, UArtProvider, UTileDataProvider, UTexmapProvider,
   ULandscape, UHueProvider, UAnimDataProvider, ULightProvider;
 
 type
@@ -38,7 +38,7 @@ type
   { TGameResourceManager }
 
   TGameResourceManager = class
-    constructor Create(ADataDir: String);
+    constructor Create(ADataDir: String; Flags: Cardinal; out Success: Boolean);
     destructor Destroy; override;
   protected
     { Members }
@@ -63,37 +63,83 @@ type
     { Methods }
     function GetFile(AFileName: String): String;
     procedure InitLandscape(AWidth, AHeight: Word);
+  public
+    lbDlgErrorFilePathCaption: string;
+    lbDlgErrorFilePathMsg: string;
   end;
 
 var
   GameResourceManager: TGameResourceManager;
   ResMan: TGameResourceManager absolute GameResourceManager;
 
-procedure InitGameResourceManager(ADataDir: String);
+function InitGameResourceManager(ADataDir: String; Flags: Cardinal): Boolean;
 
 implementation
 
-procedure InitGameResourceManager(ADataDir: String);
+uses
+  UStatics, UfrmInitialize, Language;
+
+//var
+//  GameResourceInited : Boolean;//:= False;
+
+function InitGameResourceManager(ADataDir: String; Flags: Cardinal): Boolean;
 begin
   FreeAndNil(GameResourceManager);
-  GameResourceManager := TGameResourceManager.Create(ADataDir);
+  GameResourceManager := TGameResourceManager.Create(ADataDir, Flags, Result);
 end;
 
 { TGameResourceManager }
 
-constructor TGameResourceManager.Create(ADataDir: String);
+constructor TGameResourceManager.Create(ADataDir: String; Flags: Cardinal; out Success: Boolean);
 begin
   inherited Create;
+  LanguageTranslate(nil, nil, self);
   FDataDir := IncludeTrailingPathDelimiter(ADataDir);
 
-  FArtProvider := TArtProvider.Create(GetFile('art.mul'), GetFile('artidx.mul'), True);
-  FTiledataProvider := TTiledataProvider.Create(GetFile('tiledata.mul'), True);
+  // 0xF0   - FlagsData Version Type
+  // 0x0000 - UnUsed
+  // 0x01   - pre-alpha client ()
+  // 0x02   - Reserved (alpha client?)
+  // 0x04   - Reserved (use Verdata)
+  // 0x08   - HS Client Format
+
+  // Проверка путей
+  if (not FileExists(GetFile('art.mul'))) or
+     (not FileExists(GetFile('artidx.mul'))) or
+     (not FileExists(GetFile('hues.mul'))) or
+     (not FileExists(GetFile('tiledata.mul'))) or
+     (not FileExists(GetFile('animdata.mul'))  and ((Flags and $01) = 0)) or
+     (not FileExists(GetFile('texmaps.mul'))   and ((Flags and $01) = 0)) or
+     (not FileExists(GetFile('texidx.mul'))    and ((Flags and $01) = 0)) or
+     (not FileExists(GetFile('light.mul'))     and ((Flags and $01) = 0)) or
+     (not FileExists(GetFile('lightidx.mul'))  and ((Flags and $01) = 0)) then
+  begin
+    MessageDlg(lbDlgErrorFilePathCaption, lbDlgErrorFilePathMsg, mtWarning, [mbOK], 0);
+    Success := False;
+    Destroy;  exit;
+  end;
+
+  UseStaticsOldFormat := (Flags and $01) <> 0;
+
+  frmInitialize.SetStatusLabel(Format(frmInitialize.SplashLoading, ['art.mul, artidx.mul']));
+  FArtProvider := TArtProvider.Create((Flags and $01) <> 0, GetFile('art.mul'), GetFile('artidx.mul'), True);
+
+  frmInitialize.SetStatusLabel(Format(frmInitialize.SplashLoading, ['tiledata.mul']));
+  FTiledataProvider := TTiledataProvider.Create((Flags and $08) = 0, GetFile('tiledata.mul'), True);
+
+  frmInitialize.SetStatusLabel(Format(frmInitialize.SplashLoading, ['animdata.mul']));
   FAnimdataProvider := TAnimDataProvider.Create(GetFile('animdata.mul'), True);
-  FTexmapProvider := TTexmapProvider.Create(GetFile('texmaps.mul'),
-    GetFile('texidx.mul'), True);
+
+  frmInitialize.SetStatusLabel(Format(frmInitialize.SplashLoading, ['texmaps.mul, texidx.mul']));
+  FTexmapProvider := TTexmapProvider.Create(Boolean(Flags and $01), GetFile('texmaps.mul'), GetFile('texidx.mul'), True);
+
+  frmInitialize.SetStatusLabel(Format(frmInitialize.SplashLoading, ['hues.mul']));
   FHueProvider := THueProvider.Create(GetFile('hues.mul'), True);
-  FLightProvider := TLightProvider.Create(GetFile('light.mul'),
-    GetFile('lightidx.mul'), True);
+
+  frmInitialize.SetStatusLabel(Format(frmInitialize.SplashLoading, ['light.mul, lightidx.mul']));
+  FLightProvider := TLightProvider.Create(GetFile('light.mul'), GetFile('lightidx.mul'), True);
+
+  Success := True;
 end;
 
 destructor TGameResourceManager.Destroy;
@@ -115,6 +161,8 @@ end;
 
 procedure TGameResourceManager.InitLandscape(AWidth, AHeight: Word);
 begin
+  frmInitialize.SetStatusLabel(Format(frmInitialize.SplashLoading, ['Landscape']));
+
   FreeAndNil(FLandscape);
   FLandscape := TLandscape.Create(AWidth, AHeight);
 end;

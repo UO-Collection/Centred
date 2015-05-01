@@ -31,7 +31,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Dialogs, lNetComponents, lNet,
-  UEnhancedMemoryStream, UPacket, UEnums, ExtCtrls, dateutils;
+  UEnhancedMemoryStream, UPacket, UEnums, ExtCtrls, dateutils, LConvEncoding;
 
 type
 
@@ -51,9 +51,11 @@ type
   protected
     FSendQueue: TEnhancedMemoryStream;
     FReceiveQueue: TEnhancedMemoryStream;
+    FProfile: string;
     FUsername: string;
     FPassword: string;
     FAccessLevel: TAccessLevel;
+    FServerStart: TDateTime;
     FDataDir: string;
     FLastPacket: TDateTime;
     procedure OnCanSend(ASocket: TLSocket);
@@ -61,11 +63,22 @@ type
     procedure ProcessQueue;
     procedure DoLogin;
   public
+    property Profile: string read FProfile;
     property Username: string read FUsername;
     property AccessLevel: TAccessLevel read FAccessLevel write FAccessLevel;
+    property ServerStart: TDateTime read FServerStart;
     procedure Send(APacket: TPacket);
     procedure Disconnect;
     procedure CheckClose(ASender: TForm);
+  public
+    ErrorCaption: string;
+    WrongServer: string;
+    WrongAccount: string;
+    WrongPassword: string;
+    NoAccess: string;
+    AlreadyLogined: string;
+    TCPErrorCaption: string;
+    UnsuportedVersion: string;
   end; 
 
 var
@@ -77,8 +90,10 @@ uses
   UPacketHandlers, UPackets, UfrmMain, UfrmLogin, UfrmInitialize,
   UGameResources, UfrmAccountControl, UfrmEditAccount, UfrmDrawSettings,
   UfrmBoundaries, UfrmElevateSettings, UfrmConfirmation, UfrmMoveSettings,
-  UfrmAbout, UfrmHueSettings, UfrmRadar, UfrmLargeScaleCommand,
-  UfrmVirtualLayer, UfrmFilter, UfrmRegionControl, UfrmLightlevel;
+  UfrmAbout, UfrmHueSettings, UfrmRadar, UfrmLargeScaleCommand, UfrmFillSettings,
+  UfrmVirtualLayer, UfrmFilter, UfrmRegionControl, UfrmLightlevel, UfrmSelectionSettings,
+  UfrmSurfElevateSettings, UfrmSurfStretchSettings, UfrmSurfSmoothSettings,
+  Logging, Language;
   
 {$I version.inc}
 
@@ -114,8 +129,11 @@ begin
 end;
 
 procedure TdmNetwork.TCPClientError(const msg: string; aSocket: TLSocket);
+var
+  rumsg : string;
 begin
-  MessageDlg('Connection error', msg, mtError, [mbOK], 0);
+  rumsg := CP1251ToUTF8(msg);
+  MessageDlg(TCPErrorCaption, rumsg, mtError, [mbOK], 0);
   if not TCPClient.Connected then
     TCPClientDisconnect(aSocket);
 end;
@@ -164,68 +182,98 @@ var
   subID: Byte;
   loginState: TLoginState;
   width, height: Word;
+  flags: Cardinal;
   serverState: TServerState;
+  date, time: TDateTime;
 begin
   subID := ABuffer.ReadByte;
   case subID of
     $01:
       begin
-        if ABuffer.ReadCardinal = ProtocolVersion then
+        if (ABuffer.ReadCardinal - $1000) = ProtocolVersion then
         begin
-          frmInitialize.lblStatus.Caption := 'Authenticating';
+          frmInitialize.lblStatus.Caption := frmInitialize.SplashAuthorization;
           Send(TLoginRequestPacket.Create(FUsername, FPassword));
         end else
-        begin
-          MessageDlg('Error', 'Invalid protocol version. Maybe your client is outdated.', mtError, [mbOK], 0);
+        begin // sLineBreak
+          MessageDlg(ErrorCaption, UnsuportedVersion, mtError, [mbOK], 0);
           Disconnect;
         end;
+        Logger.Send([lcClient, lcInfo], 'Текущая версия протокола подтверждена');
       end;
     $03:
       begin
         loginState := TLoginState(ABuffer.ReadByte);
         if loginState = lsOK then
         begin
-          frmInitialize.lblStatus.Caption := 'Initializing';
-          frmInitialize.Repaint;
-          frmInitialize.lblStatus.Repaint;
+          frmInitialize.SetStatusLabel(frmInitialize.SplashInicialization);
+
           Application.ProcessMessages;
           FAccessLevel := TAccessLevel(ABuffer.ReadByte);
-          InitGameResourceManager(FDataDir);
-          width := ABuffer.ReadWord;
+          FServerStart := IncSecond(Now, - ABuffer.ReadDWord);
+          width  := ABuffer.ReadWord;
           height := ABuffer.ReadWord;
-          ResMan.InitLandscape(width, height);
-          ResMan.Landscape.UpdateWriteMap(ABuffer);
+          flags  := ABuffer.ReadCardinal;
 
-          frmMain := TfrmMain.Create(dmNetwork);
-          frmRadarMap := TfrmRadarMap.Create(frmMain);
-          frmLargeScaleCommand := TfrmLargeScaleCommand.Create(frmMain);
-          frmRegionControl := TfrmRegionControl.Create(frmMain);
-          frmAccountControl := TfrmAccountControl.Create(frmMain);
-          frmEditAccount := TfrmEditAccount.Create(frmAccountControl);
-          frmConfirmation := TfrmConfirmation.Create(frmMain);
-          frmDrawSettings := TfrmDrawSettings.Create(frmMain);
-          frmMoveSettings := TfrmMoveSettings.Create(frmMain);
-          frmElevateSettings := TfrmElevateSettings.Create(frmMain);
-          frmHueSettings := TfrmHueSettings.Create(frmMain);
-          frmBoundaries := TfrmBoundaries.Create(frmMain);
-          frmFilter := TfrmFilter.Create(frmMain);
-          frmVirtualLayer := TfrmVirtualLayer.Create(frmMain);
-          frmLightlevel := TfrmLightlevel.Create(frmMain);
-          frmAbout := TfrmAbout.Create(frmMain);
-          frmMain.Show;
-          frmInitialize.Hide;
-          tmNoOp.Enabled := True;
+          // Для совместимости с сервером 0.7.0 (ранее тут слалось число преметов)
+          if (flags and $FF000000) = 0 then // GameResourceManager.Tiledata.StaticCount
+            if flags < $C000 then flags := $F0000000 else flags := $F0000008;
+
+          if not InitGameResourceManager(FDataDir, Flags) then begin
+            Logger.Send([lcClient, lcInfo], 'CentrED+ загрузка отменена, не та версия *.mul файлов.');
+            Disconnect; exit;
+          end;
+
+          ResMan.InitLandscape(width, height);
+
+          // Проверка обновлений
+          frmInitialize.SetStatusLabel(frmInitialize.SplashUpdates);
+
+
+          Logger.Send([lcClient, lcInfo], 'Начало загрузки CentrED+');
+          frmInitialize.SetStatusLabel(Format(frmInitialize.SplashLoading, ['OpenGL Device']));
+          ResMan.Landscape.UpdateWriteMap(ABuffer);                            Logger.Send([lcClient, lcInfo], 'ResMan.Landscape.UpdateWriteMap(ABuffer);');
+
+          frmMain := TfrmMain.Create(dmNetwork);                               Logger.Send([lcClient, lcInfo], 'frmMain := TfrmMain.Create(dmNetwork);');
+
+          frmInitialize.SetStatusLabel(Format(frmInitialize.SplashLoading, ['Windows Forms']));
+          frmRadarMap := TfrmRadarMap.Create(frmMain);                         Logger.Send([lcClient, lcInfo], 'frmRadarMap := TfrmRadarMap.Create(frmMain);');
+          frmLargeScaleCommand := TfrmLargeScaleCommand.Create(frmMain);       Logger.Send([lcClient, lcInfo], 'frmLargeScaleCommand := TfrmLargeScaleCommand.Create(frmMain);');
+          frmRegionControl := TfrmRegionControl.Create(frmMain);               Logger.Send([lcClient, lcInfo], 'frmRegionControl := TfrmRegionControl.Create(frmMain);');
+          frmAccountControl := TfrmAccountControl.Create(frmMain);             Logger.Send([lcClient, lcInfo], 'frmAccountControl := TfrmAccountControl.Create(frmMain);');
+          frmEditAccount := TfrmEditAccount.Create(frmAccountControl);         Logger.Send([lcClient, lcInfo], 'frmEditAccount := TfrmEditAccount.Create(frmAccountControl);');
+          frmConfirmation := TfrmConfirmation.Create(frmMain);                 Logger.Send([lcClient, lcInfo], 'frmConfirmation := TfrmConfirmation.Create(frmMain);');
+          frmSelectionSettings := TfrmSelectionSettings.Create(frmMain);       Logger.Send([lcClient, lcInfo], 'frmSelectionSettings := TfrmSelectionSettings.Create(frmMain);');
+          frmMoveSettings := TfrmMoveSettings.Create(frmMain);                 Logger.Send([lcClient, lcInfo], 'frmMoveSettings := TfrmMoveSettings.Create(frmMain);');
+          frmElevateSettings := TfrmElevateSettings.Create(frmMain);           Logger.Send([lcClient, lcInfo], 'frmElevateSettings := TfrmElevateSettings.Create(frmMain);');
+          frmSurfElevateSettings := TfrmSurfElevateSettings.Create(frmMain);   Logger.Send([lcClient, lcInfo], 'frmSurfElevateSettings := TfrmSurfElevateSettings.Create(frmMain);');
+          frmSurfStretchSettings := TfrmSurfStretchSettings.Create(frmMain);   Logger.Send([lcClient, lcInfo], 'frmSurfStretchSettings := TfrmSurfStretchSettings.Create(frmMain);');
+          frmSurfSmoothSettings := TfrmSurfSmoothSettings.Create(frmMain);     Logger.Send([lcClient, lcInfo], 'frmSurfSmoothSettings := TfrmSurfSmoothSettings.Create(frmMain);');
+          frmDrawSettings := TfrmDrawSettings.Create(frmMain);                 Logger.Send([lcClient, lcInfo], 'frmDrawSettings := TfrmDrawSettings.Create(frmMain);');
+          frmHueSettings := TfrmHueSettings.Create(frmMain);                   Logger.Send([lcClient, lcInfo], 'frmHueSettings := TfrmHueSettings.Create(frmMain);');
+          frmFillSettings := TfrmFillSettings.Create(frmMain);                 Logger.Send([lcClient, lcInfo], 'frmFillSettings := TfrmFillSettings.Create(frmMain);');
+          frmVirtualLayer := TfrmVirtualLayer.Create(frmMain);                 Logger.Send([lcClient, lcInfo], 'frmVirtualLayer := TfrmVirtualLayer.Create(frmMain)');
+          frmBoundaries := TfrmBoundaries.Create(frmMain);                     Logger.Send([lcClient, lcInfo], 'frmBoundaries := TfrmBoundaries.Create(frmMain);');
+          frmFilter := TfrmFilter.Create(frmMain);                             Logger.Send([lcClient, lcInfo], 'frmFilter := TfrmFilter.Create(frmMain);');
+          frmLightlevel := TfrmLightlevel.Create(frmMain);                     Logger.Send([lcClient, lcInfo], 'frmLightlevel := TfrmLightlevel.Create(frmMain);');
+          frmAbout := TfrmAbout.Create(frmMain);                               Logger.Send([lcClient, lcInfo], 'frmAbout := TfrmAbout.Create(frmMain);');
+          frmMain.mnuTileListViewClick(nil);
+          frmMain.Show;                                                        Logger.Send([lcClient, lcInfo], 'frmMain.Show;');
+          frmInitialize.Hide;                                                  Logger.Send([lcClient, lcInfo], 'frmInitialize.Hide;');
+          tmNoOp.Enabled := True;                                              Logger.Send([lcClient, lcInfo], 'tmNoOp.Enabled := True;');
+          frmInitialize.SetStatusLabel(Format(frmInitialize.SplashLoading, ['Done']));
         end else
         begin
           if loginState = lsInvalidUser then
-            MessageDlg('Error', 'The username you specified is incorrect.', mtWarning, [mbOK], 0)
+            MessageDlg(ErrorCaption, WrongAccount, mtWarning, [mbOK], 0)
           else if loginState = lsInvalidPassword then
-            MessageDlg('Error', 'The password you specified is incorrect.', mtWarning, [mbOK], 0)
+            MessageDlg(ErrorCaption, WrongPassword, mtWarning, [mbOK], 0)
           else if loginState = lsAlreadyLoggedIn then
-            MessageDlg('Error', 'There is already a client logged in using that account.', mtWarning, [mbOK], 0)
+            MessageDlg(ErrorCaption, AlreadyLogined, mtWarning, [mbOK], 0)
           else if loginState = lsNoAccess then
-            MessageDlg('Error', 'This account has no access.', mtWarning, [mbOK], 0);
+            MessageDlg(ErrorCaption, NoAccess, mtWarning, [mbOK], 0);
         end;
+        Logger.Send([lcClient, lcInfo], 'CentrED+ запущен.');
       end;
     $04: //Server state
       begin
@@ -238,7 +286,7 @@ begin
         end else
         begin
           case serverState of
-            ssFrozen: frmInitialize.lblStatus.Caption := 'The server is currently paused.';
+            ssFrozen: frmInitialize.lblStatus.Caption := frmInitialize.SplashSuspend;
             ssOther: frmInitialize.lblStatus.Caption := ABuffer.ReadStringNull
           end;
           tmNoOp.Enabled := False;
@@ -296,18 +344,23 @@ begin
   FreeAndNil(frmEditAccount);
   FreeAndNil(frmAccountControl);
   FreeAndNil(frmConfirmation);
-  FreeAndNil(frmDrawSettings);
+  FreeAndNil(frmSelectionSettings);
   FreeAndNil(frmMoveSettings);
   FreeAndNil(frmElevateSettings);
+  FreeAndNil(frmSurfElevateSettings);
+  FreeAndNil(frmSurfStretchSettings);
+  FreeAndNil(frmSurfSmoothSettings);
+  FreeAndNil(frmDrawSettings);
   FreeAndNil(frmHueSettings);
+  FreeAndNil(frmFillSettings);
+  FreeAndNil(frmVirtualLayer);
   FreeAndNil(frmBoundaries);
   FreeAndNil(frmFilter);
-  FreeAndNil(frmVirtualLayer);
+  FreeAndNil(frmLightlevel);
   FreeAndNil(frmAbout);
   FreeAndNil(frmRegionControl);
   FreeAndNil(frmLargeScaleCommand);
   FreeAndNil(frmRadarMap);
-  FreeAndNil(frmLightlevel);
 
   if frmMain <> nil then
   begin
@@ -320,16 +373,20 @@ begin
   frmInitialize.Hide;
   while frmLogin.ShowModal = mrOK do
   begin
+    LanguageTranslate(frmInitialize, self, nil);
     if TCPClient.Connect(frmLogin.edHost.Text, frmLogin.edPort.Value) then
     begin
+      if frmLogin.cbProfile.ItemIndex > -1
+        then FProfile := frmLogin.cbProfile.Text
+        else FProfile := '---';
       FUsername := frmLogin.edUsername.Text;
       FPassword := frmLogin.edPassword.Text;
-      FDataDir := frmLogin.edData.Text;
-      frmInitialize.lblStatus.Caption := 'Connecting';
+      FDataDir  := UTF8ToCP1251(frmLogin.edData.Text);
+      frmInitialize.lblStatus.Caption := frmInitialize.SplashConnection;
       frmInitialize.Show;
       Break;
     end else
-      MessageDlg('Error', 'Cannot connect to the specified server.', mtError, [mbOK], 0);
+      MessageDlg(ErrorCaption, WrongServer, mtError, [mbOK], 0);
   end;
   frmLogin.Close;
   FreeAndNil(frmLogin);

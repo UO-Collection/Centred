@@ -31,7 +31,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, ComCtrls,
-  VirtualTrees, Math, UEnhancedMemoryStream, UEnums;
+  StdCtrls, ExtCtrls, VirtualTrees, Math, UEnhancedMemoryStream, UEnums;
 
 type
 
@@ -55,18 +55,41 @@ type
     procedure tbAddUserClick(Sender: TObject);
     procedure tbDeleteUserClick(Sender: TObject);
     procedure tbRefreshClick(Sender: TObject);
+    procedure vstAccountsCompareNodes(Sender: TBaseVirtualTree; Node1,
+      Node2: PVirtualNode; Column: TColumnIndex; var Result: Integer);
     procedure vstAccountsDblClick(Sender: TObject);
     procedure vstAccountsFreeNode(Sender: TBaseVirtualTree; Node: PVirtualNode);
+    procedure vstAccountsGetHint(Sender: TBaseVirtualTree; Node: PVirtualNode;
+      Column: TColumnIndex; var LineBreakStyle: TVTTooltipLineBreakStyle;
+      var HintText: String);
+    procedure GetAccountImageIndex(AccessLevel: TAccessLevel; var ImageIndex: Integer);
     procedure vstAccountsGetImageIndex(Sender: TBaseVirtualTree;
       Node: PVirtualNode; Kind: TVTImageKind; Column: TColumnIndex;
       var Ghosted: Boolean; var ImageIndex: Integer);
     procedure vstAccountsGetText(Sender: TBaseVirtualTree; Node: PVirtualNode;
       Column: TColumnIndex; TextType: TVSTTextType; var CellText: String);
+    procedure vstAccountsHeaderClick(Sender: TVTHeader; Column: TColumnIndex;
+      Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
   protected
     procedure OnModifyUserResponse(ABuffer: TEnhancedMemoryStream);
     procedure OnDeleteUserResponse(ABuffer: TEnhancedMemoryStream);
     procedure OnListUsersPacket(ABuffer: TEnhancedMemoryStream);
     function FindNode(AUsername: string): PVirtualNode;
+  private
+    procedure OnListModified;
+  public
+    lbDlgDelConfCaption: string;
+    lbDlgDelConf: string;
+    lbDlgAddNotiCaption: string;
+    lbDlgAddNoti: string;
+    lbDlgModNotiCaption: string;
+    lbDlgModNoti: string;
+    lbDlgInvlErrCaption: string;
+    lbDlgInvlErr: string;
+    lbDlgDelNotiCaption: string;
+    lbDlgDelNoti: string;
+    lbDlgDelfErrCaption: string;
+    lbDlgDelfErr: string;
   end;
 
 var
@@ -75,7 +98,8 @@ var
 implementation
 
 uses
-  UdmNetwork, UPacket, UPacketHandlers, UAdminHandling, UfrmEditAccount;
+  UdmNetwork, UPacket, UPacketHandlers, UAdminHandling, UfrmEditAccount, UfrmMain,
+  UGUIPlatformUtils, Language;
 
 type
   PAccountInfo = ^TAccountInfo;
@@ -146,6 +170,8 @@ end;
 
 procedure TfrmAccountControl.FormCreate(Sender: TObject);
 begin
+  LanguageTranslate(Self);
+
   vstAccounts.NodeDataSize := SizeOf(TAccountInfo);
   
   AssignAdminPacketHandler($05, TPacketHandler.Create(0, @OnModifyUserResponse));
@@ -198,6 +224,7 @@ end;
 
 procedure TfrmAccountControl.FormShow(Sender: TObject);
 begin
+  SetWindowParent(Handle, frmMain.Handle);
   tbRefreshClick(Sender);
 end;
 
@@ -233,7 +260,7 @@ begin
   if selected <> nil then
   begin
     accountInfo := vstAccounts.GetNodeData(selected);
-    if MessageDlg('Confirmation', Format('Do you really want to delete "%s"?',
+    if MessageDlg(lbDlgDelConfCaption, Format(lbDlgDelConf,
       [accountInfo^.Username]), mtConfirmation, [mbYes, mbNo], 0) = mrYes then
       dmNetwork.Send(TDeleteUserPacket.Create(accountInfo^.Username));
   end;
@@ -242,6 +269,19 @@ end;
 procedure TfrmAccountControl.tbRefreshClick(Sender: TObject);
 begin
   dmNetwork.Send(TRequestUserListPacket.Create);
+end;
+
+procedure TfrmAccountControl.vstAccountsCompareNodes(Sender: TBaseVirtualTree;
+  Node1, Node2: PVirtualNode; Column: TColumnIndex; var Result: Integer);
+var
+  accountInfo1, accountInfo2: PAccountInfo;
+begin
+  accountInfo1 := Sender.GetNodeData(Node1);
+  accountInfo2 := Sender.GetNodeData(Node2);
+  case Column of
+    1: Result := CompareText(accountInfo1^.Username, accountInfo2^.Username);
+    2: Result := Integer(accountInfo1^.AccessLevel) - Integer(accountInfo2^.AccessLevel);
+  end;
 end;
 
 procedure TfrmAccountControl.vstAccountsDblClick(Sender: TObject);
@@ -259,21 +299,63 @@ begin
   if accountInfo^.Regions <> nil then FreeAndNil(accountInfo^.Regions);
 end;
 
+procedure TfrmAccountControl.vstAccountsGetHint(Sender: TBaseVirtualTree;
+  Node: PVirtualNode; Column: TColumnIndex;
+  var LineBreakStyle: TVTTooltipLineBreakStyle; var HintText: String);
+var
+  accountInfo: PAccountInfo;
+begin
+  if Column = 3 then
+  begin
+    accountInfo := Sender.GetNodeData(Node);
+    if accountInfo^.Regions.Count > 0 then
+      HintText := Trim(accountInfo^.Regions.Text);
+  end;
+end;
+
+procedure TfrmAccountControl.GetAccountImageIndex(AccessLevel: TAccessLevel; var ImageIndex: Integer);
+begin
+  case AccessLevel of
+      alNone: ImageIndex := 0;
+      alView: ImageIndex := 1;
+      alNormal: ImageIndex := 6;
+      alDeveloper: ImageIndex := 8;
+      alAdministrator: ImageIndex := 10;
+    end;
+end;
+
 procedure TfrmAccountControl.vstAccountsGetImageIndex(Sender: TBaseVirtualTree;
   Node: PVirtualNode; Kind: TVTImageKind; Column: TColumnIndex;
   var Ghosted: Boolean; var ImageIndex: Integer);
 var
   accountInfo: PAccountInfo;
 begin
+  accountInfo := Sender.GetNodeData(Node);
   if Column = 0 then
   begin
-    accountInfo := Sender.GetNodeData(Node);
     case accountInfo^.AccessLevel of
       alNone: ImageIndex := 0;
       alView: ImageIndex := 1;
-      alNormal: ImageIndex := 2;
-      alAdministrator: ImageIndex := 3;
+      alNormal:
+        begin
+          if accountInfo^.Regions.Count > 0 then
+            ImageIndex := 5
+          else
+            ImageIndex := 6;
+        end;
+      alDeveloper:
+        begin
+          if accountInfo^.Regions.Count > 0 then
+            ImageIndex := 7
+          else
+            ImageIndex := 8;
+        end;
+      alAdministrator: ImageIndex := 10;
     end;
+  end else if Column = 3 then
+  begin
+    if accountInfo^.Regions.Count > 0 then
+      ImageIndex := 12;
   end;
 end;
 
@@ -286,9 +368,29 @@ begin
   accountInfo := Sender.GetNodeData(Node);
   case Column of
     1: CellText := accountInfo^.Username;
-    2: CellText := GetAccessLevelString(accountInfo^.AccessLevel);
+    2: CellText := GetAccessLevel(accountInfo^.AccessLevel);
   else
     CellText := '';
+  end;
+end;
+
+procedure TfrmAccountControl.vstAccountsHeaderClick(Sender: TVTHeader;
+  Column: TColumnIndex; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  if Column in [1, 2] then
+  begin
+    if Sender.SortColumn <> Column then
+    begin
+      Sender.SortColumn := Column;
+      Sender.SortDirection := sdAscending;
+    end else
+    begin
+      case Sender.SortDirection of
+        sdAscending: Sender.SortDirection := sdDescending;
+        sdDescending: Sender.SortDirection := sdAscending;
+      end;
+    end;
+    Sender.Treeview.SortTree(Sender.SortColumn, Sender.SortDirection);
   end;
 end;
 
@@ -313,8 +415,9 @@ begin
         regions := ABuffer.ReadByte;
         for i := 0 to regions - 1 do
           accountInfo^.Regions.Add(ABuffer.ReadStringNull);
+        OnListModified;
 
-        Messagedlg('Success', Format('The user "%s" has been added.', [username]),
+        Messagedlg(lbDlgAddNotiCaption, Format(lbDlgAddNoti, [username]),
           mtInformation, [mbOK], 0);
       end;
     muModified:
@@ -328,13 +431,14 @@ begin
           regions := ABuffer.ReadByte;
           for i := 0 to regions - 1 do
             accountInfo^.Regions.Add(ABuffer.ReadStringNull);
+          OnListModified;
 
-          Messagedlg('Success', Format('The user "%s" has been modified.', [username]),
+          Messagedlg(lbDlgModNotiCaption, Format(lbDlgModNoti, [username]),
             mtInformation, [mbOK], 0);
         end;
       end;
     muInvalidUsername:
-      MessageDlg('Error', Format('The username "%s" is not valid.', [username]),
+      MessageDlg(lbDlgInvlErrCaption, Format(lbDlgInvlErr, [username]),
         mtError, [mbOK], 0);
   end;
 end;
@@ -354,13 +458,14 @@ begin
         if node <> nil then
         begin
           vstAccounts.DeleteNode(node);
-          Messagedlg('Success', Format('The user "%s" has been deleted.', [username]),
+          OnListModified;
+
+          Messagedlg(lbDlgDelNotiCaption, Format(lbDlgDelNoti, [username]),
             mtInformation, [mbOK], 0);
         end;
       end;
     duNotFound:
-      MessageDlg('Error', Format('The user "%s" could not be deleted. Maybe ' +
-        'your list is out of date or you tried to delete yourself.', [username]),
+      MessageDlg(lbDlgDelfErrCaption, Format(lbDlgDelfErr, [username]),
          mtError, [mbOK], 0);
   end;
 end;
@@ -386,6 +491,7 @@ begin
       accountInfo^.Regions.Add(ABuffer.ReadStringNull);
   end;
   vstAccounts.EndUpdate;
+  OnListModified;
 end;
 
 function TfrmAccountControl.FindNode(AUsername: string): PVirtualNode;
@@ -402,6 +508,11 @@ begin
       Result := node;
     node := vstAccounts.GetNext(node);
   end;
+end;
+
+procedure TfrmAccountControl.OnListModified;
+begin
+  vstAccounts.Header.SortColumn := -1;
 end;
 
 initialization

@@ -29,7 +29,7 @@ interface
 
 uses
   Classes, SysUtils, dzlib, UConfig, UNetState, UEnhancedMemoryStream, UEnums,
-  ULinkedList, URegions;
+  ULinkedList, URegions, LConvEncoding, Language;
 
 type
   TPacketProcessor = procedure(ABuffer: TEnhancedMemoryStream; ANetState: TNetState);
@@ -151,7 +151,7 @@ begin
       uncompStream.Unlock;
     end else
     begin
-      Writeln(TimeStamp, 'Dropping client due to unknown packet: ', ANetState.Socket.PeerAddress);
+      Writeln(TimeStamp, GetText('UnkPack1'), packetID, GetText('UnkPack2') + ' ', ANetState.Socket.PeerAddress);
       ANetState.ReceiveQueue.Clear;
       CEDServerInstance.Disconnect(ANetState.Socket);
     end;

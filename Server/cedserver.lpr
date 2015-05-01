@@ -31,44 +31,53 @@ uses
   {$IFDEF UNIX}{$IFDEF UseCThreads}
   cthreads,
   {$ENDIF}{$ENDIF}
-  SysUtils, UConfig, UCEDServer;
+  SysUtils, UConfig, UCEDServer, LConvEncoding, vinfo, Language;
   
 {$I version.inc}
   
-{$IFDEF WINDOWS}{$R cedserver.rc}{$ENDIF}
+//{$IFDEF WINDOWS}{$R cedserver.rc}{$ENDIF}
+
+{$R *.res}
+
 
 begin
   Writeln('');
-  Writeln('CentrED Server Version ', ProductVersion);
-  Writeln('Copyright ', Copyright);
+  Writeln(Format('======= CentrED+ Server [Version: %s  Build: %d] =======',
+                 [VersionInfo.GetFileVersionString, VersionInfo.Build]));
+  Writeln('Copyright: ', Original);
+  Writeln('         : ', '"CentrED+" version (c) ', Copyright, ' (uoquint.ru)');
+  //Writeln('         : ', '!!! pre-release (not stable version) !!!');
+  //Writeln('Modified by StaticZ (uoquint.ru)');
   //Writeln('================================');
-  Writeln('');
 
   {$IFDEF Windows}
   if FileExists(ConfigFile) then
     Config := TConfig.Create(ConfigFile)
   else
     Config := TConfig.Init(ConfigFile);
+  LanguageLoad(Config.Language);
   {$ELSE}
   if ParamStr(1) = '--init' then
     Config := TConfig.Init(ConfigFile)
   else if FileExists(ConfigFile) then
     Config := TConfig.Create(ConfigFile)
   else begin
-    Writeln('No valid config file was found. Use --init to create one.');
+    Writeln(UTF8ToCP866('Файл конфигурации не был найден. Запустите програму с параметром --init чтобы создать новый файл конфигурации.'));
     Halt;
   end;
+  LanguageLoad(Config.Language);
   {$ENDIF}
-  
-  Writeln(TimeStamp, 'Initialization started');
+
+  Writeln(TimeStamp, GetText('xmLoaded') + ' "' + ExtractFileName(ConfigFile) + '"');
+  Writeln(TimeStamp, GetText('dfStRead'));
   Randomize;
   CEDServerInstance := TCEDServer.Create;
-  Writeln(TimeStamp, 'Initialization done');
+  Writeln(TimeStamp, GetText('dfInited'));
   CEDServerInstance.Run;
-  Write(TimeStamp, 'Shutting down ... ');
+  Write(TimeStamp, GetText('Quieting'));
   FreeAndNil(CEDServerInstance);
   Config.Flush;
   FreeAndNil(Config);
-  Writeln('done');
+  Writeln(GetText('SucsDone'));
 end.
 

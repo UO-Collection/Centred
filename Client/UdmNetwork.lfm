@@ -2,10 +2,10 @@ object dmNetwork: TdmNetwork
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy
   OldCreateOrder = False
-  Height = 300
+  Height = 375
   HorizontalOffset = 290
   VerticalOffset = 171
-  Width = 400
+  Width = 631
   object TCPClient: TLTCPComponent
     Port = 0
     OnReceive = TCPClientReceive

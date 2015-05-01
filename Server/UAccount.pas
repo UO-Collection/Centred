@@ -49,15 +49,18 @@ type
     FPasswordHash: string;
     FLastPos: TPoint;
     FRegions: TStringList;
+    FLastLogon: TDateTime;
     procedure SetAccessLevel(const AValue: TAccessLevel);
     procedure SetPasswordHash(const AValue: string);
     procedure SetLastPos(const AValue: TPoint);
+    procedure SetLastLogon(const ADateTime: TDateTime);
   public
     property Name: string read FName;
     property AccessLevel: TAccessLevel read FAccessLevel write SetAccessLevel;
     property PasswordHash: string read FPasswordHash write SetPasswordHash;
     property LastPos: TPoint read FLastPos write SetLastPos;
     property Regions: TStringList read FRegions;
+    property LastLogon: TDateTime read FLastLogon write SetLastLogon;
     procedure Invalidate;
   end;
 
@@ -152,6 +155,11 @@ begin
   FLastPos.x := EnsureRange(AValue.x, 0, CEDServerInstance.Landscape.CellWidth - 1);
   FLastPos.y := EnsureRange(AValue.y, 0, CEDServerInstance.Landscape.CellHeight - 1);
   Invalidate;
+end;
+
+procedure TAccount.SetLastLogon(const ADateTime: TDateTime);
+begin
+  FLastLogon := ADateTime;
 end;
 
 procedure TAccount.Invalidate;

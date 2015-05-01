@@ -31,7 +31,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  Spin, ExtCtrls, LMessages, UfrmToolWindow;
+  Spin, ExtCtrls, LMessages, VirtualTrees, VirtualList, UfrmToolWindow, UfrmMain;
 
 type
 
@@ -39,17 +39,25 @@ type
 
   TfrmDrawSettings = class(TfrmToolWindow)
     cbForceAltitude: TCheckBox;
+    cbProbability: TCheckBox;
+    cbUseSurfaceAltitude: TCheckBox;
     cbRandomHeight: TCheckBox;
+    cbUseFreeTilesOnly: TCheckBox;
+    seProbability: TFloatSpinEdit;
     gbHue: TGroupBox;
     pbHue: TPaintBox;
     rbRandom: TRadioButton;
     rbTileList: TRadioButton;
     seForceAltitude: TSpinEdit;
     seRandomHeight: TSpinEdit;
+    procedure cbUseSurfaceAltitudeChange(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     procedure pbHueClick(Sender: TObject);
     procedure pbHuePaint(Sender: TObject);
+    procedure rbRandomChange(Sender: TObject);
     procedure seForceAltitudeChange(Sender: TObject);
+    procedure seProbabilityChange(Sender: TObject);
     procedure seRandomHeightChange(Sender: TObject);
   private
     FCanClose: Boolean;
@@ -63,7 +71,14 @@ var
 implementation
 
 uses
-  UGameResources, UHue, UfrmHueSettings;
+  UGameResources, UHue, UfrmHueSettings, Language;
+
+type
+  PTileInfo = ^TTileInfo;
+  TTileInfo = record
+    ID: LongWord;
+    ptr: Pointer;
+  end;
 
 { TfrmDrawSettings }
 
@@ -79,6 +94,34 @@ end;
 procedure TfrmDrawSettings.FormCreate(Sender: TObject);
 begin
   FCanClose := True;
+  cbUseSurfaceAltitudeChange(Sender);
+end;
+
+procedure TfrmDrawSettings.FormShow(Sender: TObject);
+var
+  item: PVirtualItem;
+  tileInfo: PTileInfo;
+  selectedID: LongWord;
+begin
+  LanguageTranslate(Self);
+  item := frmMain.vdtTiles.GetFirstSelected;
+  if item <> nil then
+  begin
+    tileInfo := frmMain.vdtTiles.GetNodeData(item);
+    selectedID := tileInfo^.ID;
+  end;
+  if (selectedID < $4000) or (selectedID >= $2F000000)
+    then begin
+      cbUseFreeTilesOnly.Checked:= False;
+      cbUseFreeTilesOnly.Enabled:= False;
+      if (selectedID >= $2F000000) then
+        cbProbability.Enabled:= False;
+    end else begin
+      cbUseFreeTilesOnly.Enabled:= True;
+      cbProbability.Enabled:= True;
+    end;
+
+  (frmDrawSettings as TfrmToolWindow).FormShow(Sender);
 end;
 
 procedure TfrmDrawSettings.pbHuePaint(Sender: TObject);
@@ -96,6 +139,23 @@ begin
   end;
 end;
 
+procedure TfrmDrawSettings.rbRandomChange(Sender: TObject);
+begin
+  if frmMain.mnuAutoHideRandomList.Checked then
+     frmMain.mnuAutoHideRandomListClick(Sender);
+end;
+
+procedure TfrmDrawSettings.seProbabilityChange(Sender: TObject);
+begin
+  cbProbability.Checked := (seProbability.Value < seProbability.MaxValue);
+end;
+
+procedure TfrmDrawSettings.cbUseSurfaceAltitudeChange(Sender: TObject);
+begin
+  cbForceAltitude.Enabled := not cbUseSurfaceAltitude.Checked;
+  seForceAltitude.Enabled := not cbUseSurfaceAltitude.Checked;
+end;
+
 procedure TfrmDrawSettings.seForceAltitudeChange(Sender: TObject);
 begin
   cbForceAltitude.Checked := True;
@@ -103,7 +163,7 @@ end;
 
 procedure TfrmDrawSettings.seRandomHeightChange(Sender: TObject);
 begin
-  cbRandomHeight.Checked := True;
+  cbRandomHeight.Checked := (seRandomHeight.Value <> 0);
 end;
 
 function TfrmDrawSettings.CanClose: Boolean;

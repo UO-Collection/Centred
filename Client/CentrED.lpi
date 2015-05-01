@@ -1,33 +1,181 @@
 <?xml version="1.0"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="7"/>
+    <Version Value="9"/>
     <General>
       <Flags>
         <MainUnitHasUsesSectionForAllUnits Value="False"/>
-        <AlwaysBuild Value="False"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
       <MainUnit Value="0"/>
-      <TargetFileExt Value=".exe"/>
-      <Title Value="CentrED"/>
-      <LFMResourceType Value="res"/>
+      <Title Value="CentrED+"/>
+      <ResourceType Value="res"/>
+      <XPManifest>
+        <DpiAware Value="True"/>
+      </XPManifest>
       <Icon Value="0"/>
     </General>
     <LazDoc Paths="../doc"/>
     <VersionInfo>
       <UseVersionInfo Value="True"/>
-      <CurrentMajorRevNr Value="6"/>
-      <CurrentMinorRevNr Value="1"/>
-      <CurrentBuildNr Value="209"/>
-      <ProjectVersion Value="0.6.1.209"/>
-      <CompanyName Value="AKS DataBasis"/>
-      <FileDescription Value="UO CentrED"/>
-      <InternalName Value="CentrED"/>
-      <LegalCopyright Value="Andreas Schneider"/>
-      <OriginalFilename Value="CentrED.exe"/>
-      <ProductName Value="CentrED"/>
+      <AutoIncrementBuild Value="True"/>
+      <MinorVersionNr Value="7"/>
+      <RevisionNr Value="8"/>
+      <BuildNr Value="1759"/>
+      <Language Value="0419"/>
+      <StringTable CompanyName="www.uoquint.ru" FileDescription="UO CentrED+" InternalName="CentrED+" LegalCopyright="StaticZ" OriginalFilename="CentrED-plus.exe" ProductName="CentrED+" ProductVersion="0.7.8"/>
     </VersionInfo>
+    <BuildModes Count="4">
+      <Item1 Name="default" Default="True"/>
+      <Item2 Name="Release Win32">
+        <CompilerOptions>
+          <Version Value="9"/>
+          <Target>
+            <Filename Value="../bin/PEBinaries/CentrED-plus (x32).exe"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="..;../obj;../Imaging;$(ProjOutDir)"/>
+            <OtherUnitFiles Value="..;../UOLib;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;Tools"/>
+            <UnitOutputDirectory Value="../obj/win32"/>
+            <SrcPath Value="$(LazarusDir)/lcl;$(LazarusDir)/lcl/interfaces/$(LCLWidgetType);..;../UOLib;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;Tools"/>
+            <LCLWidgetType Value="win32"/>
+          </SearchPaths>
+          <Parsing>
+            <SyntaxOptions>
+              <CStyleOperator Value="False"/>
+            </SyntaxOptions>
+          </Parsing>
+          <CodeGeneration>
+            <SmartLinkUnit Value="True"/>
+            <TargetProcessor Value="pentium4"/>
+            <TargetCPU Value="i386"/>
+            <TargetOS Value="win32"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <UseLineInfoUnit Value="False"/>
+              <StripSymbols Value="True"/>
+            </Debugging>
+            <LinkSmart Value="True"/>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+          <Other>
+            <CompilerMessages>
+              <IgnoredMessages idx4079="True" idx4080="True" idx4081="True" idx5024="True" idx5028="True"/>
+              <UseMsgFile Value="True"/>
+            </CompilerMessages>
+            <CustomOptions Value="-FE../bin/PEBinaries/
+-dNoLogging"/>
+            <CompilerPath Value="$(CompPath)"/>
+          </Other>
+        </CompilerOptions>
+      </Item2>
+      <Item3 Name="Release Win64">
+        <CompilerOptions>
+          <Version Value="9"/>
+          <Target>
+            <Filename Value="../bin/PEBinaries/CentrED-plus (x64).exe"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="..;../obj;../Imaging;$(ProjOutDir)"/>
+            <OtherUnitFiles Value="..;../UOLib;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;Tools"/>
+            <UnitOutputDirectory Value="../obj/win64"/>
+            <SrcPath Value="$(LazarusDir)/lcl;$(LazarusDir)/lcl/interfaces/$(LCLWidgetType);..;../UOLib;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;Tools"/>
+            <LCLWidgetType Value="win32"/>
+          </SearchPaths>
+          <Parsing>
+            <SyntaxOptions>
+              <CStyleOperator Value="False"/>
+            </SyntaxOptions>
+          </Parsing>
+          <CodeGeneration>
+            <SmartLinkUnit Value="True"/>
+            <TargetProcessor Value="pentium4"/>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="win64"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <UseLineInfoUnit Value="False"/>
+              <StripSymbols Value="True"/>
+            </Debugging>
+            <LinkSmart Value="True"/>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+          <Other>
+            <CompilerMessages>
+              <IgnoredMessages idx4079="True" idx4080="True" idx4081="True" idx5024="True" idx5028="True"/>
+              <UseMsgFile Value="True"/>
+            </CompilerMessages>
+            <CustomOptions Value="-FE../bin/PEBinaries/
+-dNoLogging"/>
+            <CompilerPath Value="$(CompPath)"/>
+          </Other>
+        </CompilerOptions>
+      </Item3>
+      <Item4 Name="Release Linux GTK2 x86">
+        <CompilerOptions>
+          <Version Value="9"/>
+          <Target>
+            <Filename Value="../bin/PEBinaries/CentrED-plus"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir);../Imaging;.."/>
+            <OtherUnitFiles Value="..;../UOLib;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;Tools"/>
+            <UnitOutputDirectory Value="../obj/$(TargetCPU)-$(TargetOS)"/>
+            <SrcPath Value="$(LazarusDir)/lcl;$(LazarusDir)/lcl/interfaces/$(LCLWidgetType);..;../UOLib;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;Tools"/>
+          </SearchPaths>
+          <Parsing>
+            <SyntaxOptions>
+              <CStyleOperator Value="False"/>
+            </SyntaxOptions>
+          </Parsing>
+          <CodeGeneration>
+            <SmartLinkUnit Value="True"/>
+            <TargetCPU Value="i386"/>
+            <TargetOS Value="linux"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <UseLineInfoUnit Value="False"/>
+              <StripSymbols Value="True"/>
+            </Debugging>
+            <LinkSmart Value="True"/>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+          <Other>
+            <CompilerMessages>
+              <IgnoredMessages idx4079="True" idx4080="True" idx4081="True" idx5024="True" idx5028="True"/>
+              <UseMsgFile Value="True"/>
+            </CompilerMessages>
+            <CustomOptions Value="-FE../bin/PEBinaries/
+-dNoLogging"/>
+            <CompilerPath Value="$(CompPath)"/>
+          </Other>
+        </CompilerOptions>
+      </Item4>
+    </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
       <IncludeFileFilter Value="*.(pas|pp|inc|lfm|lpr|lrs|lpi|lpk|sh|xml)"/>
@@ -39,27 +187,31 @@
         <LaunchingApplication PathPlusParams="/usr/X11R6/bin/xterm -T 'Lazarus Run Output' -e $(LazarusDir)/tools/runwait.sh $(TargetCmdLine)"/>
       </local>
     </RunParams>
-    <RequiredPackages Count="5">
+    <RequiredPackages Count="6">
       <Item1>
-        <PackageName Value="multiloglaz"/>
+        <PackageName Value="lclextensions_package"/>
+        <MinVersion Minor="3" Valid="True"/>
       </Item1>
       <Item2>
-        <PackageName Value="LazOpenGLContext"/>
-        <MinVersion Valid="True"/>
+        <PackageName Value="multiloglaz"/>
       </Item2>
       <Item3>
-        <PackageName Value="LCL"/>
+        <PackageName Value="LazOpenGLContext"/>
+        <MinVersion Valid="True"/>
       </Item3>
       <Item4>
-        <PackageName Value="lnetvisual"/>
-        <MinVersion Minor="5" Release="3" Valid="True"/>
+        <PackageName Value="LCL"/>
       </Item4>
       <Item5>
+        <PackageName Value="lnetvisual"/>
+        <MinVersion Minor="5" Release="3" Valid="True"/>
+      </Item5>
+      <Item6>
         <PackageName Value="virtualtreeview_package"/>
         <MinVersion Major="4" Minor="5" Release="1" Valid="True"/>
-      </Item5>
+      </Item6>
     </RequiredPackages>
-    <Units Count="46">
+    <Units Count="60">
       <Unit0>
         <Filename Value="CentrED.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -330,37 +482,125 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="UfrmLightlevel"/>
       </Unit45>
+      <Unit46>
+        <Filename Value="../UEnhancedMemoryStream.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="UEnhancedMemoryStream"/>
+      </Unit46>
+      <Unit47>
+        <Filename Value="UndoRedoCmd.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="UndoRedoCmd"/>
+      </Unit47>
+      <Unit48>
+        <Filename Value="../UOLib/UArt.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="UArt"/>
+      </Unit48>
+      <Unit49>
+        <Filename Value="../vinfo.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="vinfo"/>
+      </Unit49>
+      <Unit50>
+        <Filename Value="language.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Language"/>
+      </Unit50>
+      <Unit51>
+        <Filename Value="Tools/UfrmFillSettings.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmFillSettings"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="UfrmFillSettings"/>
+      </Unit51>
+      <Unit52>
+        <Filename Value="Tools/UfrmSelectionSettings.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmSelectionSettings"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="UfrmSelectionSettings"/>
+      </Unit52>
+      <Unit53>
+        <Filename Value="Tools/UfrmSurfStretchSettings.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmSurfStretchSettings"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="UfrmSurfStretchSettings"/>
+      </Unit53>
+      <Unit54>
+        <Filename Value="Tools/UfrmSurfElevateSettings.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmSurfElevateSettings"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="UfrmSurfElevateSettings"/>
+      </Unit54>
+      <Unit55>
+        <Filename Value="Tools/UfrmSurfSmoothSettings.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmSurfSmoothSettings"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="UfrmSurfSmoothSettings"/>
+      </Unit55>
+      <Unit56>
+        <Filename Value="Crc32Hash.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Crc32Hash"/>
+      </Unit56>
+      <Unit57>
+        <Filename Value="../UOLib/UUopFile.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="UUopFile"/>
+      </Unit57>
+      <Unit58>
+        <Filename Value="GUI/AeroGlass.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="AeroGlass"/>
+      </Unit58>
+      <Unit59>
+        <Filename Value="GUI/VirtualList.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="VirtualList"/>
+      </Unit59>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
-    <Version Value="8"/>
+    <Version Value="9"/>
     <Target>
-      <Filename Value="../bin/CentrED"/>
+      <Filename Value="../bin/PEBinaries/CentrED-plus.exe"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir)/;../Imaging/;../"/>
-      <OtherUnitFiles Value="../;../UOLib/;../MulProvider/;../Imaging/;../Imaging/JpegLib/;../Imaging/ZLib/;Tools/"/>
-      <UnitOutputDirectory Value="../obj/$(TargetCPU)-$(TargetOS)"/>
-      <SrcPath Value="$(LazarusDir)/lcl/;$(LazarusDir)/lcl/interfaces/$(LCLWidgetType)/;../;../UOLib/;../MulProvider/;../Imaging/;../Imaging/JpegLib/;../Imaging/ZLib/;Tools/"/>
+      <IncludeFiles Value="..;../obj;../Imaging;$(ProjOutDir)"/>
+      <OtherUnitFiles Value="Tools;..;../UOLib;../Server;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;GUI"/>
+      <UnitOutputDirectory Value="../obj"/>
+      <LCLWidgetType Value="win32"/>
     </SearchPaths>
     <Parsing>
       <SyntaxOptions>
-        <CStyleOperator Value="False"/>
-        <UseAnsiStrings Value="True"/>
+        <UseAnsiStrings Value="False"/>
       </SyntaxOptions>
     </Parsing>
     <CodeGeneration>
-      <SmartLinkUnit Value="True"/>
+      <Checks>
+        <RangeChecks Value="True"/>
+        <OverflowChecks Value="True"/>
+      </Checks>
+      <TargetProcessor Value="pentium4"/>
+      <TargetCPU Value="i386"/>
+      <TargetOS Value="win32"/>
       <Optimizations>
         <OptimizationLevel Value="3"/>
       </Optimizations>
     </CodeGeneration>
     <Linking>
       <Debugging>
-        <UseLineInfoUnit Value="False"/>
-        <StripSymbols Value="True"/>
+        <GenerateDebugInfo Value="True"/>
       </Debugging>
-      <LinkSmart Value="True"/>
       <Options>
         <Win32>
           <GraphicApplication Value="True"/>
@@ -370,9 +610,10 @@
     <Other>
       <CompilerMessages>
         <IgnoredMessages idx4079="True" idx4080="True" idx4081="True" idx5024="True" idx5028="True"/>
+        <UseMsgFile Value="True"/>
       </CompilerMessages>
-      <CustomOptions Value="-FE../bin/
--dNoLogging"/>
+      <CustomOptions Value="-FE../bin/PEBinaries/
++-dNoLogging"/>
       <CompilerPath Value="$(CompPath)"/>
     </Other>
   </CompilerOptions>

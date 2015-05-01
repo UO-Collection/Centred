@@ -40,6 +40,8 @@ type
   TfrmMoveSettings = class(TfrmToolWindow)
     btnCancel: TButton;
     cbAsk: TCheckBox;
+    cbLand: TCheckBox;
+    cbItem: TCheckBox;
     gbDirection: TGroupBox;
     btnTopLeft: TSpeedButton;
     btnTop: TSpeedButton;
@@ -49,8 +51,12 @@ type
     btnBottom: TSpeedButton;
     btnBottomLeft: TSpeedButton;
     btnLeft: TSpeedButton;
+    gbMovment: TGroupBox;
     seOffset: TSpinEdit;
     procedure btnTopLeftClick(Sender: TObject);
+    procedure cbItemChange(Sender: TObject);
+    procedure cbLandChange(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
     procedure FormDeactivate(Sender: TObject); override;
     procedure FormShow(Sender: TObject); override;
   protected
@@ -66,7 +72,7 @@ var
 implementation
 
 uses
-  UdmNetwork, UfrmMain, UEnums;
+  UdmNetwork, UfrmMain, UEnums, Language;
 
 { TfrmMoveSettings }
 
@@ -79,7 +85,7 @@ end;
 procedure TfrmMoveSettings.FormShow(Sender: TObject);
 begin
   btnCancel.Visible := (fsModal in FormState);
-  if dmNetwork.AccessLevel = alAdministrator then
+  if dmNetwork.AccessLevel = alDeveloper then
     seOffset.MaxValue := Max(frmMain.Landscape.CellWidth, frmMain.Landscape.CellHeight);
 
   inherited FormShow(Sender);
@@ -139,6 +145,24 @@ procedure TfrmMoveSettings.btnTopLeftClick(Sender: TObject);
 begin
   ModalResult := mrYes;
 end;
+
+procedure TfrmMoveSettings.cbItemChange(Sender: TObject);
+begin
+  if not cbItem.Checked
+    then cbLand.Checked := True;
+end;
+
+procedure TfrmMoveSettings.cbLandChange(Sender: TObject);
+begin
+  if not cbLand.Checked
+    then cbItem.Checked := True;
+end;
+
+procedure TfrmMoveSettings.FormCreate(Sender: TObject);
+begin
+  LanguageTranslate(Self);
+end;
+
 
 initialization
   {$I UfrmMoveSettings.lrs}

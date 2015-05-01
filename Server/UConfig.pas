@@ -31,7 +31,7 @@ interface
 
 uses
   Classes, SysUtils, DOM, XMLRead, XMLWrite, md5, Keyboard, UAccount,
-  UXmlHelper, UInterfaces, UEnums, URegions;
+  UXmlHelper, UInterfaces, UEnums, URegions, LConvEncoding, Language;
 
 type
 
@@ -50,17 +50,20 @@ type
     FStaIdxFile: string;
     FWidth: Word;
     FHeight: Word;
+    FFormatFlags: Cardinal;
     procedure SetHeight(const AValue: Word);
     procedure SetMapFile(const AValue: string);
     procedure SetStaIdxFile(const AValue: string);
     procedure SetStaticsFile(const AValue: string);
     procedure SetWidth(const AValue: Word);
+    procedure SetFormatFlags(const AValue: Cardinal);
   public
     property MapFile: string read FMapFile write SetMapFile;
     property StaticsFile: string read FStaticsFile write SetStaticsFile;
     property StaIdxFile: string read FStaIdxFile write SetStaIdxFile;
     property Width: Word read FWidth write SetWidth;
     property Height: Word read FHeight write SetHeight;
+    property FormatFlags: Cardinal read FFormatFlags write SetFormatFlags;
   end;
 
   { TConfig }
@@ -76,6 +79,7 @@ type
     FMap: TMapInfo;
     FTiledata: string;
     FRadarcol: string;
+    FLanguage: string;
     FRegions: TRegionList;
     FAccounts: TAccountList;
     FChanged: Boolean;
@@ -89,6 +93,7 @@ type
     property Radarcol: string read FRadarcol write SetRadarcol;
     property Regions: TRegionList read FRegions;
     property Accounts: TAccountList read FAccounts;
+    property Language: string read FLanguage;
     procedure Flush;
     procedure Invalidate;
   end;
@@ -97,13 +102,14 @@ var
   AppDir: string;
   ConfigFile: string;
   Config: TConfig;
+  tmp_i: Integer;
   
 function TimeStamp: string;
 
 implementation
 
 const
-  CONFIGVERSION = 3;
+  CONFIGVERSION = 5;
   
 function QueryPassword: String;
 var
@@ -130,7 +136,9 @@ end;
 
 function TimeStamp: string;
 begin
-  Result := '[' + DateTimeToStr(Now) + '] ';
+  //Result := '[' + DateTimeToStr(Now) + '] ';
+  //Result := FormatDateTime('[yyyy.mm.dd hh:mm:ss] ', Now);
+  Result := FormatDateTime('[hh:mm:ss] ', Now);
 end;
 
 { TMapInfo }
@@ -149,22 +157,19 @@ begin
   FStaticsFile := TXmlHelper.ReadString(AElement, 'Statics', 'statics0.mul');
   FWidth := TXmlHelper.ReadInteger(AElement, 'Width', 768);
   FHeight := TXmlHelper.ReadInteger(AElement, 'Height', 512);
+  FFormatFlags := $F0000000 + Cardinal(TXmlHelper.ReadInteger(AElement, 'Format', $0000) and $0000FFFF);
 end;
 
 procedure TMapInfo.Serialize(AElement: TDOMElement);
 begin
-  TXmlHelper.WriteString(AElement, 'Map', FMapFile);
+  TXmlHelper.WriteString(AElement, 'Map',    FMapFile);
   TXmlHelper.WriteString(AElement, 'StaIdx', FStaIdxFile);
-  TXmlHelper.WriteString(AElement, 'Statics', FStaticsFile);
-  TXmlHelper.WriteInteger(AElement, 'Width', FWidth);
-  TXmlHelper.WriteInteger(AElement, 'Height', FHeight);
+  TXmlHelper.WriteString(AElement, 'Statics',FStaticsFile);
+  TXmlHelper.WriteInteger(AElement,'Width',  FWidth);
+  TXmlHelper.WriteInteger(AElement,'Height', FHeight);
+  TXmlHelper.WriteString(AElement, 'Format', Format('0x%.8x', [(FFormatFlags and $0000FFFF)]));
 end;
 
-procedure TMapInfo.SetHeight(const AValue: Word);
-begin
-  FHeight := AValue;
-  FOwner.Invalidate;
-end;
 
 procedure TMapInfo.SetMapFile(const AValue: string);
 begin
@@ -187,6 +192,18 @@ end;
 procedure TMapInfo.SetWidth(const AValue: Word);
 begin
   FWidth := AValue;
+  FOwner.Invalidate;
+end;
+
+procedure TMapInfo.SetHeight(const AValue: Word);
+begin
+  FHeight := AValue;
+  FOwner.Invalidate;
+end;
+
+procedure TMapInfo.SetFormatFlags(const AValue: Cardinal);
+begin
+  FFormatFlags := AValue;
   FOwner.Invalidate;
 end;
 
@@ -216,8 +233,9 @@ begin
   
   FTiledata := TXmlHelper.ReadString(xmlDoc.DocumentElement, 'Tiledata', 'tiledata.mul');
   FRadarcol := TXmlHelper.ReadString(xmlDoc.DocumentElement, 'Radarcol', 'radarcol.mul');
-
+  FLanguage := TXmlHelper.ReadString(xmlDoc.DocumentElement, 'Language', '..\Language\English.ini');
   xmlElement := TDOMElement(xmlDoc.DocumentElement.FindNode('Regions'));
+
   if assigned(xmlElement) then
     FRegions := TRegionList.Deserialize(Self, xmlElement)
   else
@@ -243,27 +261,37 @@ begin
   FMap := TMapInfo.Create(Self);
   FAccounts := TAccountList.Create(Self);
   FRegions := TRegionList.Create(Self);
-  
-  Writeln('Configuring Network');
-  Writeln('===================');
-  Write  ('Port [2597]: ');
+
+  Writeln('');
+  Writeln('==============');
+  FLanguage := '..\Language\English.ini';
+  Writeln(UTF8ToCP866('language file [' + FLanguage + ']'));
+  Readln (stringValue);
+  if (stringValue <> '')
+  then FLanguage := stringValue;
+  LanguageLoad(FLanguage);
+  Writeln('');
+
+  Writeln(GetText('iNetwork'));
+  Writeln('==============');
+  Write  (GetText('iSetPort') + UTF8ToCP866(' [2597]: '));
   Readln (stringValue);
   intValue := 0;
   if not TryStrToInt(stringValue, intValue) then intValue := 2597;
   FPort := intValue;
   Writeln('');
 
-  Writeln('Configuring Paths');
-  Writeln('=================');
-  Write  ('map [map0.mul]: ');
+  Writeln(GetText('iDatPath'));
+  Writeln('===============');
+  Write  ('map      [map0.mul]: ');
   Readln (FMap.FMapFile);
   if FMap.MapFile = '' then FMap.MapFile := 'map0.mul';
-  Write  ('statics [statics0.mul]: ');
-  Readln (FMap.FStaticsFile);
-  if FMap.StaticsFile = '' then FMap.StaticsFile := 'statics0.mul';
-  Write  ('staidx [staidx0.mul]: ');
+  Write  ('staidx   [staidx0.mul]: ');
   Readln (FMap.FStaIdxFile);
   if FMap.StaIdxFile = '' then FMap.StaIdxFile := 'staidx0.mul';
+  Write  ('statics  [statics0.mul]: ');
+  Readln (FMap.FStaticsFile);
+  if FMap.StaticsFile = '' then FMap.StaticsFile := 'statics0.mul';
   Write  ('tiledata [tiledata.mul]: ');
   Readln (FTiledata);
   if FTiledata = '' then FTiledata := 'tiledata.mul';
@@ -272,25 +300,29 @@ begin
   if FRadarcol = '' then FRadarcol := 'radarcol.mul';
   Writeln('');
 
-  Writeln('Parameters');
-  Writeln('==========');
-  Write  ('Map width [768]: ');
+  Writeln(GetText('iMapDesc'));
+  Writeln('===============');
+  Write  (GetText('iMapWidt') + UTF8ToCP866(' [768]: '));
   Readln (stringValue);
   if not TryStrToInt(stringValue, intValue) then intValue := 768;
   FMap.Width := intValue;
-  Write  ('Map height [512]: ');
+  Write  (GetText('iMapHeig') + UTF8ToCP866(' [512]: '));
   Readln (stringValue);
   if not TryStrToInt(stringValue, intValue) then intValue := 512;
   FMap.Height := intValue;
+  Write  (GetText('iDFormat') + UTF8ToCP866(' [0x0000]: '));
+  Readln (stringValue);
+  if not TryStrToInt(stringValue, intValue) then intValue := $0000;
+  FMap.FormatFlags := $F0000000 + Cardinal(intValue);
   Writeln('');
 
-  Writeln('Admin account');
-  Writeln('=============');
+  Writeln(GetText('iAccount'));
+  Writeln('======================');
   repeat
-    Write('Account name: ');
+    Write(GetText('iUserAcc') + UTF8ToCP866(' '));
     Readln(stringValue);
   until stringValue <> '';
-  Write  ('Password [hidden]: ');
+  Write  (GetText('iUserPas') + UTF8ToCP866(' '));
   password := QueryPassword;
   FAccounts.Add(TAccount.Create(FAccounts, stringValue,
     MD5Print(MD5String(password)), alAdministrator, nil));
@@ -308,6 +340,7 @@ end;
 
 procedure TConfig.Serialize(AElement: TDOMElement);
 begin
+  TXmlHelper.WriteString(AElement, 'Language', FLanguage);
   TXmlHelper.WriteInteger(AElement, 'Port', FPort);
   FMap.Serialize(TXmlHelper.AssureElement(AElement, 'Map'));
   TXmlHelper.WriteString(AElement, 'Tiledata', FTiledata);
@@ -360,10 +393,15 @@ begin
   AppDir := ExtractFilePath(ParamStr(0));
   if AppDir[Length(AppDir)] <> PathDelim then
     AppDir := AppDir + PathDelim;
-    
-  {TODO : add command line parameter to specify the config}
+
   Config := nil;
-  ConfigFile := ChangeFileExt(ParamStr(0), '.xml');
+  ConfigFile := '';
+  for tmp_i := 0 to ParamCount do begin
+    if LowerCase(ExtractFileExt(ParamStr(tmp_i))) = '.xml'
+      then ConfigFile := ExtractFilePath(ParamStr(0)) + ParamStr(1);
+  end;
+  if ConfigFile = ''
+      then ConfigFile := ChangeFileExt(ParamStr(0), '.xml');
 end;
 
 end.

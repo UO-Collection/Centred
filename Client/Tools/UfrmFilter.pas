@@ -31,8 +31,8 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ExtCtrls, VirtualTrees, LCLIntf, LMessages, Buttons, UPlatformTypes, UStatics,
-  Menus;
+  ExtCtrls, VirtualTrees, VirtualList, LCLIntf, LMessages, Buttons, UPlatformTypes,
+  UStatics, Menus, Windows, Logging;
 
 type
 
@@ -55,7 +55,8 @@ type
     pmHues: TPopupMenu;
     rgFilterType: TRadioGroup;
     Splitter1: TSplitter;
-    vdtFilter: TVirtualDrawTree;
+    tFormClose: TTimer;
+    vdtFilter: TVirtualList;
     vdtHues: TVirtualDrawTree;
     procedure btnClearClick(Sender: TObject);
     procedure btnDeleteClick(Sender: TObject);
@@ -63,10 +64,18 @@ type
     procedure cbTileFilterChange(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure FormMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure FormMouseUp(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
     procedure FormShow(Sender: TObject);
+    procedure GroupBox1MouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
     procedure mnuUncheckHuesClick(Sender: TObject);
     procedure mnuCheckHuesClick(Sender: TObject);
     procedure rgFilterTypeClick(Sender: TObject);
+    procedure tFormCloseTimer(Sender: TObject);
     procedure vdtFilterDragDrop(Sender: TBaseVirtualTree; Source: TObject;
       DataObject: IDataObject; Formats: TFormatArray; Shift: TShiftState;
       Pt: TPoint; var Effect: Integer; Mode: TDropMode);
@@ -78,6 +87,8 @@ type
     procedure vdtHuesChecked(Sender: TBaseVirtualTree; Node: PVirtualNode);
     procedure vdtHuesDrawNode(Sender: TBaseVirtualTree;
       const PaintInfo: TVTPaintInfo);
+  private
+    FLastRMouseDown: DWORD;
   protected
     FLocked: Boolean;
     FCheckedHues: TBits;
@@ -86,6 +97,8 @@ type
     property Locked: Boolean read FLocked write FLocked;
     function Filter(AStatic: TStaticItem): Boolean;
     procedure JumpToHue(AHueID: Word);
+    procedure AddTile(ATileID: LongWord);
+    procedure AddHue(AHueID: Word);
   end; 
 
 var
@@ -94,16 +107,17 @@ var
 implementation
 
 uses
-  UfrmMain, UGameResources, UHue, UGraphicHelper, UGUIPlatformUtils;
+  UfrmMain, UGameResources, UHue, UGraphicHelper, UGUIPlatformUtils, Language;
   
 type
   PTileInfo = ^TTileInfo;
   TTileInfo = record
-    ID: Word;
+    ID: LongWord;
+    ptr: Pointer;
   end;
   PHueInfo = ^THueInfo;
   THueInfo = record
-    ID: Word;
+    ID: LongWord;
     Hue: THue;
   end;
 
@@ -111,16 +125,21 @@ type
 
 procedure TfrmFilter.FormShow(Sender: TObject);
 var
-  upperLeft, lowerLeft: TPoint;
+  wspos : TPoint;
+  wrect : TRect;
 begin
-  upperLeft := frmMain.pcLeft.ClientToScreen(Point(frmMain.pcLeft.Width, 0));
-  lowerLeft := frmMain.pcLeft.ClientToScreen(Point(frmMain.pcLeft.Width,
-    frmMain.pcLeft.Height));
-  Left := upperLeft.x - 8;
-  Top := upperLeft.y - 8;
-  Height := lowerLeft.y - upperLeft.y;
-
   SetWindowParent(Handle, frmMain.Handle);
+  GetWindowRect(frmFilter.Handle, wrect);
+  wspos := frmMain.oglGameWindow.ClientToScreen(Classes.Point(0, 0));
+  Left  := wspos.X - 1;
+  Top   := wspos.Y - 1;
+  Height:= frmMain.oglGameWindow.ClientHeight - (wrect.Bottom - wrect.Top - ClientHeight);
+end;
+
+procedure TfrmFilter.GroupBox1MouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+
 end;
 
 procedure TfrmFilter.mnuUncheckHuesClick(Sender: TObject);
@@ -149,24 +168,27 @@ procedure TfrmFilter.vdtFilterDragDrop(Sender: TBaseVirtualTree;
   Source: TObject; DataObject: IDataObject; Formats: TFormatArray;
   Shift: TShiftState; Pt: TPoint; var Effect: Integer; Mode: TDropMode);
 var
-  sourceTree: TVirtualDrawTree;
-  selected, node: PVirtualNode;
+  sourceTree: TVirtualList;
+  selected: PVirtualItem;
+  node: PVirtualNode;
   sourceTileInfo, targetTileInfo: PTileInfo;
 begin
-  sourceTree := Source as TVirtualDrawTree;
-  if (sourceTree <> Sender) and (sourceTree <> nil) and
-     (sourceTree.Tag = 1) then
+  sourceTree := Source as TVirtualList;
+  if (sourceTree <> Sender) and (sourceTree <> nil) then
   begin
     Sender.BeginUpdate;
     selected := sourceTree.GetFirstSelected;
     while selected <> nil do
     begin
       sourceTileInfo := sourceTree.GetNodeData(selected);
-      if sourceTileInfo^.ID > $3FFF then
+      if (sourceTileInfo^.ID > $3FFF) and (sourceTileInfo^.ID < $0F000000) then
       begin
-        node := Sender.AddChild(nil);
-        targetTileInfo := Sender.GetNodeData(node);
-        targetTileInfo^.ID := sourceTileInfo^.ID;
+        //node := Sender.AddChild(nil);
+        //targetTileInfo := Sender.GetNodeData(node);
+        //targetTileInfo^.ID := sourceTileInfo^.ID;
+        Logger.Send([lcClient, lcDebug], 'TfrmFilter.vdtFilterDragDrop TileID', Format('0x%.8x', [sourceTileInfo^.ID]));
+        AddTile(sourceTileInfo^.ID);
+
         cbTileFilter.Checked := True;
         frmMain.InvalidateFilter;
       end;
@@ -180,8 +202,7 @@ procedure TfrmFilter.vdtFilterDragOver(Sender: TBaseVirtualTree;
   Source: TObject; Shift: TShiftState; State: TDragState; Pt: TPoint;
   Mode: TDropMode; var Effect: Integer; var Accept: Boolean);
 begin
-  if (Source <> Sender) and (Source is TVirtualDrawTree) and
-    (TVirtualDrawTree(Source).Tag = 1) then
+  if (Source <> Sender) and (Source is TVirtualDrawTree) then
   begin
     Accept := True;
   end;
@@ -244,8 +265,8 @@ function TfrmFilter.Filter(AStatic: TStaticItem): Boolean;
 var
   found: Boolean;
   tileInfo: PTileInfo;
-  node: PVirtualNode;
-  id: Word;
+  node: PVirtualItem;
+  id: LongWord;
 begin
   if cbTileFilter.Checked then
   begin
@@ -296,12 +317,70 @@ begin
   end;
 end;
 
+procedure TfrmFilter.AddTile(ATileID: LongWord);
+var
+  selected, node: PVirtualItem;
+  sourceTileInfo, targetTileInfo: PTileInfo;
+  exists: Boolean;
+begin
+    if (ATileID > $3FFF) and (ATileID < $0F000000) then
+    begin
+      exists := False;
+      vdtFilter.BeginUpdate;
+
+      selected := vdtFilter.GetFirst();
+      while selected <> nil do
+      begin
+        sourceTileInfo := vdtFilter.GetNodeData(selected);
+        if sourceTileInfo^.ID = ATileID then
+        begin
+          exists := True;
+          break;
+        end;
+        selected := vdtFilter.GetNext(selected);
+      end;
+      if not exists then
+      begin
+        node := vdtFilter.AddItem(nil);
+        targetTileInfo := vdtFilter.GetNodeData(node);
+        targetTileInfo^.ID := ATileID;
+      end;
+
+      vdtFilter.EndUpdate;
+    end;
+end;
+
+procedure TfrmFilter.AddHue(AHueID: Word);
+var
+  hueInfo: PHueInfo;
+  node: PVirtualNode;
+begin
+  node := vdtHues.GetFirst;
+  while node <> nil do
+  begin
+    hueInfo := vdtHues.GetNodeData(node);
+    if hueInfo^.ID = AHueID then
+    begin
+      //FCheckedHues.Bits[AHueID] := True;
+      vdtHues.CheckState[node] := csCheckedNormal;
+      vdtHues.ClearSelection;
+      vdtHues.Selected[node] := True;
+      vdtHues.FocusedNode := node;
+      node := nil;
+    end else
+      node := vdtHues.GetNext(node);
+  end;
+end;
+
 procedure TfrmFilter.FormCreate(Sender: TObject);
 var
   i: Integer;
   hueInfo: PHueInfo;
   node: PVirtualNode;
 begin
+  vdtFilter := TVirtualList.Create(vdtFilter);
+  LanguageTranslate(Self);
+
   FLocked := False;
   vdtFilter.NodeDataSize := SizeOf(TTileInfo);
   vdtHues.NodeDataSize := SizeOf(THueInfo);
@@ -326,9 +405,56 @@ begin
   if FCheckedHues <> nil then FreeAndNil(FCheckedHues);
 end;
 
+procedure TfrmFilter.FormKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if (Key = VK_SPACE) and Visible then begin
+    frmFilter.Locked := True;
+    frmFilter.Hide;
+    frmFilter.Locked := False;
+    // Говно код для задержки чтобы дать время обработать события что возвращают фокус
+    tFormClose.Interval := 10;
+    tFormClose.Tag      := PtrInt(False);
+    tFormClose.Enabled  := True;
+  end;
+end;
+
+procedure TfrmFilter.tFormCloseTimer(Sender: TObject);
+begin
+  if (Boolean(tFormClose.Tag)) then begin
+    frmFilter.Locked := True;
+    frmFilter.Hide;
+    frmFilter.Locked := False;
+  end;
+  frmMain.SetFocus;
+  tFormClose.Enabled := False;
+end;
+
+procedure TfrmFilter.FormMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  If Button = mbRight then
+    FLastRMouseDown := GetTickCount;
+end;
+
+procedure TfrmFilter.FormMouseUp(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  if (Visible and not frmMain.mnuAutoShowFilterWindow.Checked and (GetTickCount - FLastRMouseDown < 1000)) then
+  begin
+    frmFilter.Locked := True;
+    frmFilter.Hide;
+    frmFilter.Locked := False;
+    frmMain.SetFocus;
+  end;
+end;
+
 procedure TfrmFilter.btnDeleteClick(Sender: TObject);
 begin
+  vdtFilter.BeginUpdate;
   vdtFilter.DeleteSelectedNodes;
+  vdtFilter.EndUpdate;
+  frmMain.InvalidateFilter;
 end;
 
 procedure TfrmFilter.cbHueFilterChange(Sender: TObject);
@@ -344,6 +470,7 @@ end;
 procedure TfrmFilter.btnClearClick(Sender: TObject);
 begin
   vdtFilter.Clear;
+  frmMain.InvalidateFilter;
 end;
 
 initialization

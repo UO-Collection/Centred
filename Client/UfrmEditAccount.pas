@@ -33,10 +33,11 @@ uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
   UEnums, ComCtrls, ExtCtrls, CheckLst, UfrmRegionControl, VirtualTrees;
 
+function GetAccessLevel(AAccessLevel: TAccessLevel): string;
+
 type
 
   { TfrmEditAccount }
-
   TfrmEditAccount = class(TForm)
     btnCancel: TButton;
     btnOK: TButton;
@@ -56,6 +57,7 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    //constructor Create();// override;
   public
     function GetAccessLevel: TAccessLevel;
     function GetRegions: TStrings;
@@ -72,20 +74,52 @@ var
 
 implementation
 
+uses Language;
+
 { TfrmEditAccount }
+
+function GetAccessLevel(AAccessLevel: TAccessLevel): string;
+var
+  index: Integer;
+  form: TfrmEditAccount;
+begin
+  if frmEditAccount = nil
+    then form := TfrmEditAccount.Create(nil)
+    else form := frmEditAccount;
+  case AAccessLevel of
+    alNone:          index := 0;
+    alView:          index := 1;
+    alNormal:        index := 2;
+    alDeveloper:     index := 3;
+    alAdministrator: index := 4;
+  end;
+  Result := form.cbAccessLevel.Items[index];
+  if frmEditAccount = nil
+    then form.Destroy;
+end;
+
+//procedure TfrmEditAccount.Create;// override;
+//begin
+//  LanguageTranslate(Self);
+//end;
 
 procedure TfrmEditAccount.FormCreate(Sender: TObject);
 begin
-  frmRegionControl.OnRegionModified := @RegionModified;
-  frmRegionControl.OnRegionDeleted := @RegionDeleted;
-  frmRegionControl.OnRegionList := @RegionList;
+  LanguageTranslate(Self);
+  if frmRegionControl <> nil then begin
+    frmRegionControl.OnRegionModified := @RegionModified;
+    frmRegionControl.OnRegionDeleted := @RegionDeleted;
+    frmRegionControl.OnRegionList := @RegionList;
+  end;
 end;
 
 procedure TfrmEditAccount.FormDestroy(Sender: TObject);
 begin
-  frmRegionControl.OnRegionModified := nil;
-  frmRegionControl.OnRegionDeleted := nil;
-  frmRegionControl.OnRegionList := nil;
+  if frmRegionControl <> nil then begin
+    frmRegionControl.OnRegionModified := nil;
+    frmRegionControl.OnRegionDeleted := nil;
+    frmRegionControl.OnRegionList := nil;
+  end;
 end;
 
 procedure TfrmEditAccount.FormShow(Sender: TObject);
@@ -99,7 +133,8 @@ begin
     0: Result := alNone;
     1: Result := alView;
     2: Result := alNormal;
-    3: Result := alAdministrator;
+    3: Result := alDeveloper;
+    4: Result := alAdministrator;
   end;
 end;
 
@@ -123,7 +158,8 @@ begin
     alNone: cbAccessLevel.ItemIndex := 0;
     alView: cbAccessLevel.ItemIndex := 1;
     alNormal: cbAccessLevel.ItemIndex := 2;
-    alAdministrator: cbAccessLevel.ItemIndex := 3;
+    alDeveloper: cbAccessLevel.ItemIndex := 3;
+    alAdministrator: cbAccessLevel.ItemIndex := 4;
   end;
 end;
 

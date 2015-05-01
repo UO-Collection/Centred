@@ -41,7 +41,7 @@ type
     constructor Create(AOwner: TWorldBlock);
   protected
     FOwner: TWorldBlock;
-    FTileID: Word;
+    FTileID: LongWord;
     FX: Word;
     FY: Word;
     FZ: ShortInt;
@@ -52,12 +52,12 @@ type
     FPriorityBonus: ShortInt;
     FPrioritySolver: Integer;
     procedure DoChanged;
-    function  GetTileID: Word; virtual;
+    function  GetTileID: LongWord; virtual;
     function  GetZ: ShortInt; virtual;
     procedure SetLocked(ALocked: Boolean);
     procedure SetOwner(AOwner: TWorldBlock);
     procedure SetSelected(ASelected: Boolean);
-    procedure SetTileID(AValue: Word);
+    procedure SetTileID(AValue: LongWord);
     procedure SetX(AValue: Word);
     procedure SetY(AValue: Word);
     procedure SetZ(AValue: ShortInt);
@@ -66,7 +66,7 @@ type
     procedure Delete;
 
     property Owner: TWorldBlock read FOwner write SetOwner;
-    property TileID: Word read GetTileID write SetTileID;
+    property TileID: LongWord read GetTileID write SetTileID;
     property X: Word read FX write SetX;
     property Y: Word read FY write SetY;
     property Z: ShortInt read GetZ write SetZ;
@@ -77,7 +77,7 @@ type
     property PriorityBonus: ShortInt read FPriorityBonus write FPriorityBonus;
     property PrioritySolver: Integer read FPrioritySolver write FPrioritySolver;
 
-    property RawTileID: Word read FTileID;
+    property RawTileID: LongWord read FTileID;
     property RawZ: ShortInt read FZ;
   end;
 
@@ -151,7 +151,7 @@ begin
     FOwner.Changed := True;
 end;
 
-function TWorldItem.GetTileID: Word;
+function TWorldItem.GetTileID: LongWord;
 begin
   Result := FTileID;
 end;
@@ -211,7 +211,7 @@ begin
   FSelected := ASelected;
 end;
 
-procedure TWorldItem.SetTileID(AValue: Word);
+procedure TWorldItem.SetTileID(AValue: LongWord);
 begin
   if FTileID = AValue then
     Exit;

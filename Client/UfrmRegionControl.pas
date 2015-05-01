@@ -77,6 +77,7 @@ type
     vstRegions: TVirtualStringTree;
     procedure btnGrab1Click(Sender: TObject);
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
+    procedure FormResize(Sender: TObject);
     procedure mnuAddRegionClick(Sender: TObject);
     procedure mnuDeleteRegionClick(Sender: TObject);
     procedure btnAddAreaClick(Sender: TObject);
@@ -121,6 +122,15 @@ type
     property OnRegionModified: TRegionModifiedEvent read FOnRegionModified write FOnRegionModified;
     property OnRegionDeleted: TRegionDeletedEvent read FOnRegionDeleted write FOnRegionDeleted;
     property OnRegionList: TRegionListEvent read FOnRegionList write FOnRegionList;
+  public
+    lbDlgUnsaveCaption: string;
+    lbDlgUnsave: string;
+    lbDlgDelConfCaption: string;
+    lbDlgDelConf: string;
+    lbDlgNewExistsCaption: string;
+    lbDlgNewExists: string;
+    lbNewInputQueryCaption: string;
+    lbNewInputQuery: string;
   end;
 
 var
@@ -130,7 +140,7 @@ implementation
 
 uses
   UGameResources, UfrmRadar, UfrmMain, UdmNetwork, UPacket, UGUIPlatformUtils,
-  UAdminHandling, UPacketHandlers;
+  UAdminHandling, UPacketHandlers, Language;
 
 type
   { TModifyRegionPacket }
@@ -195,18 +205,32 @@ end;
 
 procedure TfrmRegionControl.FormCreate(Sender: TObject);
 begin
+  LanguageTranslate(Self);
+
   pbArea.Width := frmRadarMap.Radar.Width;
   pbArea.Height := frmRadarMap.Radar.Height;
   seX1.MaxValue := ResMan.Landscape.CellWidth;
   seX2.MaxValue := ResMan.Landscape.CellWidth;
   seY1.MaxValue := ResMan.Landscape.CellHeight;
   seY2.MaxValue := ResMan.Landscape.CellHeight;
-  
+
+  Constraints.MaxWidth := 4 + Width - sbArea.ClientWidth + pbArea.Width + sbArea.VertScrollBar.Size;
+  Width := Constraints.MaxWidth;
+  Height := Height - sbArea.ClientHeight + frmRadarMap.Radar.Height;
+  if (Width >= frmMain.Width) then begin
+    Left  := frmMain.Left;
+    Width := frmMain.Width;
+  end;
+  if (Height >= frmMain.Height) then begin
+    Top   := frmMain.Top;
+    Height:= frmMain.Height;
+  end;
+
   vstArea.NodeDataSize := SizeOf(TRect);
   vstRegions.NodeDataSize := SizeOf(TRegionInfo);
 
   FTempRegionNode := nil;
-  
+
   frmRadarMap.Dependencies.Add(pbArea);
   frmMain.RegisterAccessChangedListener(@OnAccessChanged);
 
@@ -274,7 +298,7 @@ var
   regionInfo: PRegionInfo;
 begin
   regionName := '';
-  if InputQuery('New Region', 'Enter the name for the new region:', regionName) then
+  if InputQuery(lbNewInputQueryCaption, lbNewInputQuery, regionName) then
   begin
     CheckUnsaved;
 
@@ -289,8 +313,7 @@ begin
       btnSave.Enabled := True;
     end else
     begin
-      MessageDlg('New Region', 'The region could not be added. A region with ' +
-        'that name already exists.', mtError, [mbOK], 0);
+      MessageDlg(lbDlgNewExistsCaption, lbDlgNewExists, mtError, [mbOK], 0);
     end;
   end;
 end;
@@ -299,6 +322,16 @@ procedure TfrmRegionControl.FormClose(Sender: TObject;
   var CloseAction: TCloseAction);
 begin
   CheckUnsaved;
+end;
+
+procedure TfrmRegionControl.FormResize(Sender: TObject);
+var maxW: Integer;
+begin
+
+  seY1.Update; seY1.Repaint;
+  seX1.Update; seX1.Repaint;
+  seX2.Update; seX2.Repaint;
+  seY2.Update; seY2.Repaint;
 end;
 
 procedure TfrmRegionControl.btnGrab1Click(Sender: TObject);
@@ -316,8 +349,8 @@ var
   regionInfo: PRegionInfo;
 begin
   regionNode := vstRegions.GetFirstSelected;
-  if (regionNode <> nil) and (MessageDlg('Delete Region', 'Are you sure, you ' +
-    'want to delete the selected region?', mtConfirmation, [mbYes, mbNo], 0) = mrYes) then
+  if (regionNode <> nil) and (MessageDlg(lbDlgDelConfCaption, lbDlgDelConf,
+                 mtConfirmation, [mbYes, mbNo], 0) = mrYes) then
   begin
     regionInfo := vstRegions.GetNodeData(regionNode);
     dmNetwork.Send(TDeleteRegionPacket.Create(regionInfo^.Name));
@@ -577,7 +610,7 @@ var
   regionInfo: PRegionInfo;
 begin
   regionInfo := Sender.GetNodeData(Node);
-  CellText := UTF8Encode(regionInfo^.Name);
+  CellText := regionInfo^.Name;
 end;
 
 function TfrmRegionControl.FindRegion(AName: string): PVirtualNode;
@@ -601,8 +634,7 @@ procedure TfrmRegionControl.CheckUnsaved;
 begin
   if btnSave.Enabled then
   begin
-    if MessageDlg('Unsaved changes', 'There are unsaved ' +
-      'changes.' + #13#10+#13#10+ 'Do you want to save them now?',
+    if MessageDlg(lbDlgUnsaveCaption, lbDlgUnsave,
       mtConfirmation, [mbYes, mbNo], 0) = mrYes then
     begin
       btnSaveClick(nil);

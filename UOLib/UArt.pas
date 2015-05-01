@@ -36,9 +36,9 @@ uses
 type
   TArtType = (atLand, atStatic, atLandFlat);
   TArt = class(TMulBlock)
-    constructor Create(AData: TStream; AIndex: TGenericIndex; AArtType: TArtType); overload;
-    constructor Create(AData: TStream; AIndex: TGenericIndex; AArtType: TArtType; AHue: THue; APartialHue: Boolean); overload;
-    constructor Create(AData: TStream; AIndex: TGenericIndex; AArtType: TArtType; AArtColor: Word; AHue: THue; APartialHue: Boolean); overload;
+    constructor Create(AData: TStream; AIndex: TGenericIndex; AArtType: TArtType; OldFormat: Boolean = False); overload;
+    constructor Create(AData: TStream; AIndex: TGenericIndex; AArtType: TArtType; AHue: THue; APartialHue: Boolean; OldFormat: Boolean = False); overload;
+    constructor Create(AData: TStream; AIndex: TGenericIndex; AArtType: TArtType; AArtColor: Word; AHue: THue; APartialHue: Boolean; OldFormat: Boolean = False); overload;
     destructor Destroy; override;
     function Clone: TArt; override;
     function GetSize: Integer; override;
@@ -60,19 +60,19 @@ implementation
 
 type
   PWordArray = ^TWordArray;
-  TWordArray = array[0..16383] of Word;
+  TWordArray = array[0..(MaxInt div SizeOf(Word) - 1)] of Word; // а не перебор ли?
 
-constructor TArt.Create(AData: TStream; AIndex: TGenericIndex; AArtType: TArtType);
+constructor TArt.Create(AData: TStream; AIndex: TGenericIndex; AArtType: TArtType; OldFormat: Boolean = False);
 begin
-  Create(AData, AIndex, AArtType, 0, nil, False);
+  Create(AData, AIndex, AArtType, 0, nil, False, OldFormat);
 end;
 
-constructor TArt.Create(AData: TStream; AIndex: TGenericIndex; AArtType: TArtType; AHue: THue; APartialHue: Boolean);
+constructor TArt.Create(AData: TStream; AIndex: TGenericIndex; AArtType: TArtType; AHue: THue; APartialHue: Boolean; OldFormat: Boolean = False);
 begin
-  Create(AData, AIndex, AArtType, 0, AHue, APartialHue);
+  Create(AData, AIndex, AArtType, 0, AHue, APartialHue, OldFormat);
 end;
 
-constructor TArt.Create(AData: TStream; AIndex: TGenericIndex; AArtType: TArtType; AArtColor: Word; AHue: THue; APartialHue: Boolean);
+constructor TArt.Create(AData: TStream; AIndex: TGenericIndex; AArtType: TArtType; AArtColor: Word; AHue: THue; APartialHue: Boolean; OldFormat: Boolean = False);
 var
   i, x, y, start: Integer;
   iCurrentHeight, iCurrentWidth: Integer;
@@ -95,7 +95,7 @@ begin
     block.Position := 0;
 
     if AArtType = atLand then
-    begin
+    begin  // Lands
       FGraphic:= TSingleImage.CreateFromParams(44, 44, ifA1R5G5B5);
       FillWord(FGraphic.Bits^, 44 * 44, AArtColor);
       for y := 0 to 21 do
@@ -111,7 +111,7 @@ begin
       for i := 0 to 44 * 44 - 1 do
         PWordArray(FGraphic.Bits)^[i] := PWordArray(FGraphic.Bits)^[i] xor $8000; //invert alpha bit
     end else if AArtType = atLandFlat then
-    begin
+    begin  // Lands
       FGraphic:= TSingleImage.CreateFromParams(44, 44, ifA1R5G5B5);
       for i := 1 to 22 do
       begin
@@ -138,7 +138,7 @@ begin
       for i := 0 to 44 * 44 - 1 do
         PWordArray(FGraphic.Bits)^[i] := PWordArray(FGraphic.Bits)^[i] xor $8000; //invert alpha bit
     end else if AArtType = atStatic then
-    begin
+    begin  // Items
       block.Read(FHeader, SizeOf(LongInt));
       block.Read(width, SizeOf(SmallInt));
       block.Read(height, SizeOf(SmallInt));
@@ -151,25 +151,46 @@ begin
         block.Read(offset, SizeOf(Word));
         lookup[i] := start + (offset * 2);
       end;
-      for iCurrentHeight := 0 to height - 1 do
-      begin
-        block.Position := lookup[iCurrentHeight];
-        iCurrentWidth := 0;
-        P := FGraphic.Bits + iCurrentHeight * width * 2;
-        while (block.Read(offset, SizeOf(Word)) = SizeOf(Word)) and
-              (block.Read(run, SizeOf(Word)) = SizeOf(Word)) and
-              (offset + run <> 0) do
+      if not OldFormat then begin  // General Clients
+        for iCurrentHeight := 0 to height - 1 do
         begin
-          inc(iCurrentWidth, offset);
-          for i := 0 to run - 1 do
+          block.Position := lookup[iCurrentHeight];
+          iCurrentWidth := 0;
+          P := FGraphic.Bits + iCurrentHeight * width * 2;
+          while (block.Read(offset, SizeOf(Word)) = SizeOf(Word)) and
+                (block.Read(run, SizeOf(Word)) = SizeOf(Word)) and
+                (offset + run <> 0) do
           begin
-            block.Read(color, SizeOf(Word));
-            P^[iCurrentWidth + i] := color;
+            inc(iCurrentWidth, offset);
+            for i := 0 to run - 1 do
+            begin
+              block.Read(color, SizeOf(Word));
+              P^[iCurrentWidth + i] := color;
+            end;
+            inc(iCurrentWidth, run);
           end;
-          inc(iCurrentWidth, run);
+        end;
+      end else begin // OldFormat (Pre-Alpha Client)
+        for iCurrentHeight := 0 to height - 1 do
+        begin
+          block.Position := lookup[iCurrentHeight];
+          iCurrentWidth := 0;
+          P := FGraphic.Bits + iCurrentHeight * width * 2;
+          if (block.Read(offset, SizeOf(Word)) = SizeOf(Word)) and
+             (block.Read(run, SizeOf(Word)) = SizeOf(Word)) then
+          begin
+            inc(iCurrentWidth, offset);
+            for i := 0 to run - 1 do
+            begin
+              block.Read(color, SizeOf(Word));
+              if color <> $0000 then
+                P^[iCurrentWidth + i] := color;
+            end;
+            inc(iCurrentWidth, run);
+          end;
         end;
       end;
-      
+
       if AHue <> nil then
       begin
         for i := 0 to width * height - 1 do

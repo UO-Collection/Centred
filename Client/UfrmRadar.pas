@@ -32,7 +32,7 @@ interface
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   ImagingClasses, ImagingComponents, ImagingTypes, UEnhancedMemoryStream, crc,
-  StdCtrls;
+  StdCtrls, LConvEncoding, Windows, ShellAPI, Logging, LCLIntf;
 
 type
 
@@ -41,10 +41,12 @@ type
   { TfrmRadarMap }
 
   TfrmRadarMap = class(TForm)
+    cbStayOnTop: TCheckBox;
     lblPosition: TLabel;
     pbRadar: TPaintBox;
     pnlBottom: TPanel;
     sbMain: TScrollBox;
+    procedure cbStayOnTopChange(Sender: TObject);
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -68,28 +70,53 @@ type
 
 var
   frmRadarMap: TfrmRadarMap;
+  FormMaxWidthConst : Integer;
+  FormMaxHeightConst: Integer;
 
 implementation
 
 uses
   UdmNetwork, UGameResources, UPacketHandlers, UPackets, UfrmInitialize,
-  UfrmMain, UGraphicHelper;
+  UfrmMain, UfrmLogin, UGraphicHelper, Language;
 
 { TfrmRadarMap }
+//{$I winapi.inc}
 
 procedure TfrmRadarMap.FormCreate(Sender: TObject);
+var IntfWidth, IntfHeight: integer;
 begin
+  LanguageTranslate(Self);
+
   FRadar := TSingleImage.CreateFromParams(ResMan.Landscape.Width,
     ResMan.Landscape.Height, ifA8R8G8B8);
   pbRadar.Width := FRadar.Width;
   pbRadar.Height := FRadar.Height;
   sbMain.ClientWidth := FRadar.Width;
   sbMain.ClientHeight := FRadar.Height;
-  ClientWidth := sbMain.Width + sbMain.VertScrollBar.Size;
-  ClientHeight := sbMain.Height + sbMain.HorzScrollBar.Size + pnlBottom.Height;
-  Constraints.MaxWidth := Width;
+  ClientWidth := sbMain.Width;// + sbMain.VertScrollBar.Size;
+  ClientHeight := sbMain.Height + pnlBottom.Height;// + sbMain.HorzScrollBar.Size;
+  Constraints.MaxWidth  := Width;
   Constraints.MaxHeight := Height;
-  
+
+  //LCLIntf.GetWindowSize(Handle, IntfWidth, IntfHeight); Screen.Width
+  if (Width >= frmMain.Width) then begin
+    Left  := frmMain.Left;
+    Width := frmMain.Width;
+  end;
+  if (Height >= frmMain.Height) then begin
+    Top   := frmMain.Top;
+    Height:= frmMain.Height;
+  end;
+
+  //sbMain.HorzScrollBar.Increment:=8;
+  //sbMain.VertScrollBar.Increment:=8;
+  sbMain.HorzScrollBar.Range := FRadar.Width;
+  sbMain.VertScrollBar.Range := FRadar.Height;
+
+  FormMaxWidthConst  := Constraints.MaxWidth;
+  FormMaxHeightConst := Constraints.MaxHeight;
+  cbStayOnTopChange(Sender);
+
   FRadarDependencies := TList.Create;
     
   RegisterPacketHandler($0D, TPacketHandler.Create(0, @OnRadarHandlingPacket));
@@ -102,8 +129,16 @@ begin
   CloseAction := caHide;
 end;
 
+procedure TfrmRadarMap.cbStayOnTopChange(Sender: TObject);
+begin
+  if cbStayOnTop.Checked
+    then FormStyle := fsStayOnTop
+    else FormStyle := fsNormal;
+end;
+
 procedure TfrmRadarMap.FormDestroy(Sender: TObject);
 var
+  confdir : string;
   radarMap: TRadarColorMap;
   x, y: Integer;
   radarMapFile: TFileStream;
@@ -115,8 +150,12 @@ begin
     for y := 0 to FRadar.Height - 1 do
       radarMap[x * FRadar.Height + y] := EncodeUOColor(PInteger(FRadar.PixelPointers[x, y])^);
 
-  radarMapFile := TFileStream.Create(GetAppConfigDir(False) + 'RadarMap.cache',
-    fmCreate);
+  if (sprofile <> '') then
+    if (frmMain.ProfileDir <> '')
+      then confdir := frmMain.ProfileDir
+      else confdir := frmMain.ConfigDir;
+
+  radarMapFile := TFileStream.Create(confdir + 'RadarMap.cache', fmCreate);
   radarMapFile.Write(radarMap[0], Length(radarMap) * SizeOf(Word));
   radarMapFile.Free;
 
@@ -125,8 +164,36 @@ begin
 end;
 
 procedure TfrmRadarMap.FormResize(Sender: TObject);
+var hScroll, vScroll : Boolean;
 begin
-  sbMain.AutoScroll := (Width < Constraints.MaxWidth) or (Height < Constraints.MaxHeight);
+  if (Width > FormMaxWidthConst-10) and (Height > FormMaxHeightConst-10) then begin
+    Width  := FormMaxWidthConst;
+    Height := FormMaxHeightConst;
+    Constraints.MaxWidth  := FormMaxWidthConst;
+    Constraints.MaxHeight := FormMaxHeightConst;
+  end;
+
+  hScroll := (Width  < Constraints.MaxWidth);
+  vScroll := (Height < Constraints.MaxHeight);
+
+  if hScroll <> sbMain.HorzScrollBar.Visible then begin
+    if hScroll
+    then Constraints.MaxHeight := FormMaxHeightConst + sbMain.HorzScrollBar.Size
+    else Constraints.MaxHeight := FormMaxHeightConst;
+    sbMain.HorzScrollBar.Visible := hScroll;
+    //FormResize(Sender); // Повторный вызов, для коррекции
+  end;
+
+  if vScroll <> sbMain.VertScrollBar.Visible then begin
+    if vScroll
+    then Constraints.MaxWidth  := FormMaxWidthConst  + sbMain.VertScrollBar.Size
+    else Constraints.MaxWidth  := FormMaxWidthConst;
+    sbMain.VertScrollBar.Visible := vScroll;
+    FormResize(Sender); exit; // Повторный вызов, для коррекции
+  end;
+
+  sbMain.HorzScrollBar.Page  := sbMain.ClientWidth;
+  sbMain.VertScrollBar.Page  := sbMain.ClientHeight;
 end;
 
 procedure TfrmRadarMap.pbRadarMouseDown(Sender: TObject; Button: TMouseButton;
@@ -166,6 +233,7 @@ end;
 
 procedure TfrmRadarMap.OnRadarHandlingPacket(ABuffer: TEnhancedMemoryStream);
 var
+  confdir: string;
   subID: Byte;
   checksum, realChecksum: Cardinal;
   radarMapFile: TFileStream;
@@ -179,7 +247,14 @@ begin
       begin
         checksum := ABuffer.ReadCardinal;
         realChecksum := crc32(0, nil, 0);
-        radarMapFileName := GetAppConfigDir(False) + 'RadarMap.cache';
+        if (sprofile <> '') then
+          if (frmMain.ProfileDir <> '')
+            then confdir := frmMain.ProfileDir
+            else confdir := frmMain.ConfigDir;
+        //if (sprofile <> '')
+        //  then confdir := GetAppConfigDir(False) + 'Profiles' + PathDelim + UTF8ToCP1251(sprofile) + PathDelim
+        //  else confdir := GetAppConfigDir(False);
+        radarMapFileName := confdir + 'RadarMap.cache';
         if FileExists(radarMapFileName) then
         begin
           radarMapFile := TFileStream.Create(radarMapFileName, fmOpenRead);
@@ -192,7 +267,7 @@ begin
         
         if checksum <> realChecksum then
         begin
-          frmInitialize.lblStatus.Caption := 'Updating Radar Map';
+          frmInitialize.lblStatus.Caption := frmInitialize.SplashUpdatingMiniMap;
           frmInitialize.Show;
           frmInitialize.SetModal;
           //frmMain.Enabled := False;

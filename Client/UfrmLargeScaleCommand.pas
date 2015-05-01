@@ -31,8 +31,8 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Math,
-  VirtualTrees, ExtCtrls, ImagingComponents, StdCtrls, Buttons, Spin, LCLIntf,
-  Menus, UPlatformTypes, UEnhancedMemoryStream, UWorldItem;
+  VirtualTrees, VirtualList, ExtCtrls, ImagingComponents, StdCtrls, Buttons, Spin,
+  LCLIntf, Menus, UPlatformTypes, UEnhancedMemoryStream, UWorldItem;
 
 type
 
@@ -113,8 +113,11 @@ type
     btnGrab2: TSpeedButton;
     btnGrabOffset: TSpeedButton;
     vdtTerrainTiles: TVirtualDrawTree;
+    vdlTerrainTiles: TVirtualList;
     vdtInsertStaticsTiles: TVirtualDrawTree;
+    vdlInsertStaticsTiles: TVirtualList;
     vdtDeleteStaticsTiles: TVirtualDrawTree;
+    vdlDeleteStaticsTiles: TVirtualList;
     vstActions: TVirtualStringTree;
     vstArea: TVirtualStringTree;
     procedure btnGrab1Click(Sender: TObject);
@@ -159,6 +162,7 @@ type
     procedure vstAreaChange(Sender: TBaseVirtualTree; Node: PVirtualNode);
     procedure vstAreaGetText(Sender: TBaseVirtualTree; Node: PVirtualNode;
       Column: TColumnIndex; TextType: TVSTTextType; var CellText: String);
+    procedure RenameNode(AActionID: Integer; ACaption: String);
   protected
     FLastX: Integer;
     FLastY: Integer;
@@ -176,7 +180,7 @@ type
     function FindNode(AActionID: Integer): PVirtualNode;
     procedure TileSelection(AWorldItem: TWorldItem);
     procedure OffsetSelection(AWorldItem: TWorldItem);
-    procedure SerializeTiles(ATileList: TVirtualDrawTree;
+    procedure SerializeTiles(ATileList: TVirtualList;
       AStream: TEnhancedMemoryStream);
   public
     { public declarations }
@@ -189,7 +193,7 @@ implementation
 
 uses
   UGameResources, UfrmRadar, UfrmMain, UdmNetwork, UPacket, UPackets,
-  UGUIPlatformUtils;
+  UGUIPlatformUtils, Language;
 
 type
   PNodeInfo = ^TNodeInfo;
@@ -200,19 +204,29 @@ type
   PTileInfo = ^TTileInfo;
   TTileInfo = record
     ID: Word;
+    ptr: Pointer;
   end;
 
 { TfrmLargeScaleCommand }
 
 procedure TfrmLargeScaleCommand.FormCreate(Sender: TObject);
 begin
+  vdlTerrainTiles := TVirtualList.Create(vdtTerrainTiles);
+  vdtTerrainTiles := vdlTerrainTiles;
+  vdlInsertStaticsTiles := TVirtualList.Create(vdtInsertStaticsTiles);
+  vdtInsertStaticsTiles := vdlInsertStaticsTiles;
+  vdlDeleteStaticsTiles := TVirtualList.Create(vdtDeleteStaticsTiles);
+  vdtDeleteStaticsTiles := vdlDeleteStaticsTiles;
+
+  LanguageTranslate(Self);
+
   vstActions.NodeDataSize := SizeOf(TNodeInfo);
-  FAreaNode        := AddNode(-1, 'Target Area');
-  FCopyMoveNode    := AddNode( 0, 'Copy/Move');
-  FAltitudeNode    := AddNode( 1, 'Modify altitude');
-  FDrawTerrainNode := AddNode( 2, 'Draw terrain');
-  FDelStaticsNode  := AddNode( 3, 'Delete statics');
-  FAddStaticsNode  := AddNode( 4, 'Insert statics');
+  FAreaNode        := AddNode(-1, pgArea.Caption);
+  FCopyMoveNode    := AddNode( 0, pgCopyMove.Caption);
+  FAltitudeNode    := AddNode( 1, pgModifyAltitude.Caption);
+  FDrawTerrainNode := AddNode( 2, pgDrawTerrain.Caption);
+  FDelStaticsNode  := AddNode( 3, pgDeleteStatics.Caption);
+  FAddStaticsNode  := AddNode( 4, pgInsertStatics.Caption);
   vstActions.Selected[vstActions.GetFirst] := True;
 
   vstArea.NodeDataSize := SizeOf(TRect);
@@ -224,9 +238,9 @@ begin
   seY1.MaxValue := ResMan.Landscape.CellHeight;
   seY2.MaxValue := ResMan.Landscape.CellHeight;
 
-  vdtTerrainTiles.NodeDataSize := SizeOf(TTileInfo);
-  vdtInsertStaticsTiles.NodeDataSize := SizeOf(TTileInfo);
-  vdtDeleteStaticsTiles.NodeDataSize := SizeOf(TTileInfo);
+  vdlTerrainTiles.NodeDataSize := SizeOf(TTileInfo);
+  vdlInsertStaticsTiles.NodeDataSize := SizeOf(TTileInfo);
+  vdlDeleteStaticsTiles.NodeDataSize := SizeOf(TTileInfo);
 
   seCMOffsetX.MinValue := -ResMan.Landscape.CellWidth;
   seCMOffsetX.MaxValue := ResMan.Landscape.CellWidth;
@@ -349,17 +363,17 @@ end;
 
 procedure TfrmLargeScaleCommand.btnClearDStaticsTilesClick(Sender: TObject);
 begin
-  vdtDeleteStaticsTiles.Clear;
+  vdlDeleteStaticsTiles.Clear;
 end;
 
 procedure TfrmLargeScaleCommand.btnClearIStaticsTilesClick(Sender: TObject);
 begin
-  vdtInsertStaticsTiles.Clear;
+  vdlInsertStaticsTiles.Clear;
 end;
 
 procedure TfrmLargeScaleCommand.btnClearTerrainClick(Sender: TObject);
 begin
-  vdtTerrainTiles.Clear;
+  vdlTerrainTiles.Clear;
 end;
 
 procedure TfrmLargeScaleCommand.btnCloseClick(Sender: TObject);
@@ -369,17 +383,17 @@ end;
 
 procedure TfrmLargeScaleCommand.btnDeleteDStaticsTilesClick(Sender: TObject);
 begin
-  vdtDeleteStaticsTiles.DeleteSelectedNodes;
+  vdlDeleteStaticsTiles.DeleteSelectedNodes;
 end;
 
 procedure TfrmLargeScaleCommand.btnDeleteIStaticsTilesClick(Sender: TObject);
 begin
-  vdtInsertStaticsTiles.DeleteSelectedNodes;
+  vdlInsertStaticsTiles.DeleteSelectedNodes;
 end;
 
 procedure TfrmLargeScaleCommand.btnDeleteTerrainClick(Sender: TObject);
 begin
-  vdtTerrainTiles.DeleteSelectedNodes;
+  vdlTerrainTiles.DeleteSelectedNodes;
 end;
 
 procedure TfrmLargeScaleCommand.btnExecuteClick(Sender: TObject);
@@ -447,7 +461,7 @@ begin
   if vstActions.CheckState[node] = csCheckedNormal then
   begin
     stream.WriteBoolean(True);
-    SerializeTiles(vdtTerrainTiles, stream);
+    SerializeTiles(vdlTerrainTiles, stream);
   end else
     stream.WriteBoolean(False);
 
@@ -456,7 +470,7 @@ begin
   if vstActions.CheckState[node] = csCheckedNormal then
   begin
     stream.WriteBoolean(True);
-    SerializeTiles(vdtDeleteStaticsTiles, stream);
+    SerializeTiles(vdlDeleteStaticsTiles, stream);
     stream.WriteShortInt(Min(seDeleteStaticsZ1.Value, seDeleteStaticsZ2.Value));
     stream.WriteShortInt(Max(seDeleteStaticsZ1.Value, seDeleteStaticsZ2.Value));
   end else
@@ -467,7 +481,7 @@ begin
   if vstActions.CheckState[node] = csCheckedNormal then
   begin
     stream.WriteBoolean(True);
-    SerializeTiles(vdtInsertStaticsTiles, stream);
+    SerializeTiles(vdlInsertStaticsTiles, stream);
     stream.WriteByte(seStaticsProbability.Value);
     if rbPlaceStaticsOnZ.Checked then
     begin
@@ -565,30 +579,32 @@ procedure TfrmLargeScaleCommand.vdtTerrainTilesDragDrop(Sender: TBaseVirtualTree
   Source: TObject; DataObject: IDataObject; Formats: TFormatArray;
   Shift: TShiftState; Pt: TPoint; var Effect: Integer; Mode: TDropMode);
 var
-  sourceTree: TVirtualDrawTree;
-  selected, node: PVirtualNode;
+  SenderTVList: TVirtualList;
+  sourceTree: TVirtualList;
+  selected: PVirtualItem;
+  node: PVirtualItem;
   sourceTileInfo, targetTileInfo: PTileInfo;
 begin
-  sourceTree := Source as TVirtualDrawTree;
-  if (sourceTree <> Sender) and (sourceTree <> nil) and
-    (sourceTree.Tag = 1) then
+  SenderTVList := Sender as TVirtualList;
+  sourceTree := Source as TVirtualList;
+  if (sourceTree <> Sender) and (sourceTree <> nil) then
   begin
-    Sender.BeginUpdate;
+    SenderTVList.BeginUpdate;
     selected := sourceTree.GetFirstSelected;
     while selected <> nil do
     begin
       sourceTileInfo := sourceTree.GetNodeData(selected);
-      if ((Sender = vdtTerrainTiles) and (sourceTileInfo^.ID < $4000)) or
-         ((Sender = vdtInsertStaticsTiles) and (sourceTileInfo^.ID > $3FFF)) or
-         ((Sender = vdtDeleteStaticsTiles) and (sourceTileInfo^.ID > $3FFF)) then
+      if ((Sender = vdlTerrainTiles) and (sourceTileInfo^.ID < $4000)) or
+         ((Sender = vdlInsertStaticsTiles) and (sourceTileInfo^.ID > $3FFF)) or
+         ((Sender = vdlDeleteStaticsTiles) and (sourceTileInfo^.ID > $3FFF)) then
       begin
-        node := Sender.AddChild(nil);
-        targetTileInfo := Sender.GetNodeData(node);
+        node := SenderTVList.AddItem(nil);
+        targetTileInfo := SenderTVList.GetNodeData(node);
         targetTileInfo^.ID := sourceTileInfo^.ID;
       end;
       selected := sourceTree.GetNextSelected(selected);
     end;
-    Sender.EndUpdate;
+    SenderTVList.EndUpdate;
   end;
 end;
 
@@ -596,8 +612,7 @@ procedure TfrmLargeScaleCommand.vdtTerrainTilesDragOver(Sender: TBaseVirtualTree
   Source: TObject; Shift: TShiftState; State: TDragState; Pt: TPoint;
   Mode: TDropMode; var Effect: Integer; var Accept: Boolean);
 begin
-  if (Source <> Sender) and (Source is TVirtualDrawTree) and
-    (TVirtualDrawTree(Source).Tag = 1) then
+  if (Source <> Sender) and (Source is TVirtualDrawTree) then
   begin
     Accept := True;
   end;
@@ -717,6 +732,16 @@ begin
   end;
 end;
 
+procedure TfrmLargeScaleCommand.RenameNode(AActionID: Integer; ACaption: String);
+var
+  nodeInfo: PNodeInfo;
+begin
+  nodeInfo := vstActions.GetNodeData(FindNode(AActionID));
+  if (nodeInfo = nil) then exit;
+  nodeInfo^.Caption := ACaption;
+  vstActions.Repaint;
+end;
+
 procedure TfrmLargeScaleCommand.TileSelection(AWorldItem: TWorldItem);
 begin
   if FSelectFirst then
@@ -759,19 +784,19 @@ begin
   WindowState := FOldWindowState;
 end;
 
-procedure TfrmLargeScaleCommand.SerializeTiles(ATileList: TVirtualDrawTree;
+procedure TfrmLargeScaleCommand.SerializeTiles(ATileList: TVirtualList;
   AStream: TEnhancedMemoryStream);
 var
-  node: PVirtualNode;
+  item: PVirtualItem;
   tileInfo: PTileInfo;
 begin
   AStream.WriteWord(ATileList.RootNodeCount);
-  node := ATileList.GetFirst;
-  while node <> nil do
+  item := ATileList.GetFirst;
+  while item <> nil do
   begin
-    tileInfo := ATileList.GetNodeData(node);
+    tileInfo := ATileList.GetNodeData(item);
     AStream.WriteWord(tileInfo^.ID);
-    node := ATileList.GetNext(node);
+    item := ATileList.GetNext(item);
   end;
 end;
 

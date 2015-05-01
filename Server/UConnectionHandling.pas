@@ -31,7 +31,7 @@ interface
 
 uses
   Classes, SysUtils, UPacket, UPacketHandlers, UConfig, UAccount, UNetState,
-  UEnhancedMemoryStream, UEnums;
+  UEnhancedMemoryStream, UEnums, dateutils, LConvEncoding, Language;
   
 type
 
@@ -109,29 +109,29 @@ begin
 
         if not invalid then
         begin
-          Writeln(TimeStamp, 'Login (', username, '): ', ANetState.Socket.PeerAddress);
+          Writeln(TimeStamp, GetText('UserReg1'), username, GetText('UserReg2'), ANetState.Socket.PeerAddress);
           ANetState.Account := account;
           CEDServerInstance.SendPacket(ANetState, TLoginResponsePacket.Create(lsOK, account));
           CEDServerInstance.SendPacket(ANetState, TCompressedPacket.Create(
             TClientListPacket.Create(ANetState)));
-          CEDServerInstance.SendPacket(nil, TClientConnectedPacket.Create(username));
+          CEDServerInstance.SendPacket(nil, TClientConnectedPacket.Create(account));
           CEDServerInstance.SendPacket(ANetState, TSetClientPosPacket.Create(account.LastPos));
         end;
       end else
       begin
-        Writeln(TimeStamp, 'Invalid password for ', username);
+        Writeln(TimeStamp, GetText('WrongPas') + ' ', username);
         CEDServerInstance.SendPacket(ANetState, TLoginResponsePacket.Create(lsInvalidPassword));
         CEDServerInstance.Disconnect(ANetState.Socket);
       end;
     end else
     begin
-      Writeln(TimeStamp, 'Access denied for ', username);
+      Writeln(TimeStamp, GetText('UserBan1') + ' ', username, ' ' + GetText('UserBan2'));
       CEDServerInstance.SendPacket(ANetState, TLoginResponsePacket.Create(lsNoAccess));
       CEDServerInstance.Disconnect(ANetState.Socket);
     end;
   end else
   begin
-    Writeln(TimeStamp, 'Invalid account specified: ', ANetState.Socket.PeerAddress);
+    Writeln(TimeStamp, GetText('WrongAcc') + ' ', ANetState.Socket.PeerAddress);
     CEDServerInstance.SendPacket(ANetState, TLoginResponsePacket.Create(lsInvalidUser));
     CEDServerInstance.Disconnect(ANetState.Socket);
   end;
@@ -148,22 +148,26 @@ constructor TProtocolVersionPacket.Create(AVersion: Cardinal);
 begin
   inherited Create($02, 0);
   FStream.WriteByte($01);
-  FStream.WriteCardinal(AVersion);
+  FStream.WriteCardinal($1000 + AVersion);
 end;
 
 { TLoginResponsePacket }
 
-constructor TLoginResponsePacket.Create(AState: TLoginState;
-  AAccount: TAccount = nil);
+constructor TLoginResponsePacket.Create(AState: TLoginState; AAccount: TAccount = nil);
+var
+  val1, val2, val3, val4 : Word;
 begin
   inherited Create($02, 0);
   FStream.WriteByte($03);
   FStream.WriteByte(Byte(AState));
   if AState = lsOK then
   begin
+    AAccount.LastLogon := Now;
     FStream.WriteByte(Byte(AAccount.AccessLevel));
+    FStream.WriteDWord(DWord(SecondsBetween(Now, CEDServerInstance.WorkStart)));
     FStream.WriteWord(Config.Map.Width);
     FStream.WriteWord(Config.Map.Height);
+    FStream.WriteCardinal(Config.Map.FormatFlags);
     WriteAccountRestrictions(FStream, AAccount);
   end;
 end;

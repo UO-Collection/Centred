@@ -43,6 +43,7 @@ type
   TAccessLevel = (alNone          = 0,
                   alView          = 1,
                   alNormal        = 2,
+                  alDeveloper     = 3,
                   alAdministrator = 255);
 
   TModifyUserStatus = (muInvalidUsername = 0,

@@ -144,7 +144,7 @@ type
     { Indicates whether the current image is valid (proper format,
       allowed dimensions, right size, ...).}
     property Valid: Boolean read GetValid;
-    {{ Specifies the bounding rectangle of the image.}
+    { Specifies the bounding rectangle of the image.}
     property BoundsRect: TRect read GetBoundsRect;
     { This event occurs when the image data size has just changed. That means
       image width, height, or format has been changed.}

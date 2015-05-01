@@ -1,24 +1,25 @@
 inherited frmElevateSettings: TfrmElevateSettings
-  Left = 290
+  Left = 1502
   Height = 114
-  Top = 171
+  Top = 189
   Width = 250
-  Caption = 'Elevate'
+  Caption = 'Изменение высоты'
   ClientHeight = 114
   ClientWidth = 250
+  OnCreate = FormCreate
   object rbRaise: TRadioButton[0]
     AnchorSideLeft.Control = Owner
     AnchorSideTop.Control = Owner
     Left = 8
     Height = 19
     Top = 8
-    Width = 47
+    Width = 66
     BorderSpacing.Left = 8
     BorderSpacing.Top = 8
-    Caption = 'Raise'
+    Caption = 'Поднять'
     Checked = True
-    State = cbChecked
     TabOrder = 2
+    TabStop = True
   end
   object rbLower: TRadioButton[1]
     AnchorSideLeft.Control = rbRaise
@@ -27,10 +28,9 @@ inherited frmElevateSettings: TfrmElevateSettings
     Left = 8
     Height = 19
     Top = 27
-    Width = 52
-    Caption = 'Lower'
+    Width = 71
+    Caption = 'Опустить'
     TabOrder = 0
-    TabStop = False
   end
   object rbSet: TRadioButton[2]
     AnchorSideLeft.Control = rbLower
@@ -39,10 +39,9 @@ inherited frmElevateSettings: TfrmElevateSettings
     Left = 8
     Height = 19
     Top = 46
-    Width = 36
-    Caption = 'Set'
+    Width = 56
+    Caption = 'Задать'
     TabOrder = 1
-    TabStop = False
   end
   object cbRandomHeight: TCheckBox[3]
     AnchorSideLeft.Control = rbSet
@@ -51,9 +50,9 @@ inherited frmElevateSettings: TfrmElevateSettings
     Left = 8
     Height = 19
     Top = 81
-    Width = 135
+    Width = 163
     BorderSpacing.Top = 16
-    Caption = 'Add Random Altitude'
+    Caption = 'Добавить к высоте (случ.)'
     TabOrder = 3
   end
   object seRandomHeight: TSpinEdit[4]
@@ -63,8 +62,8 @@ inherited frmElevateSettings: TfrmElevateSettings
     AnchorSideRight.Control = Owner
     AnchorSideRight.Side = asrBottom
     Left = 197
-    Height = 25
-    Top = 78
+    Height = 23
+    Top = 79
     Width = 45
     Anchors = [akTop, akLeft, akRight]
     BorderSpacing.Right = 8
@@ -79,8 +78,8 @@ inherited frmElevateSettings: TfrmElevateSettings
     AnchorSideRight.Control = Owner
     AnchorSideRight.Side = asrBottom
     Left = 197
-    Height = 25
-    Top = 24
+    Height = 23
+    Top = 25
     Width = 45
     Anchors = [akTop, akRight]
     BorderSpacing.Right = 8
@@ -88,5 +87,7 @@ inherited frmElevateSettings: TfrmElevateSettings
     MinValue = -128
     TabOrder = 5
     Value = 1
+  end
+  inherited tmClose: TTimer[6]
   end
 end

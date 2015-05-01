@@ -30,23 +30,50 @@ unit UTexmapProvider;
 interface
 
 uses
-  UMulProvider, UMulBlock, UGenericIndex, UTexture;
+  Classes, UMulProvider, UMulBlock, UGenericIndex, UTexture;
 
 type
   TTexmapProvider = class(TIndexedMulProvider)
+    constructor Create(OldFormat: Boolean; AData, AIndex: TStream; AReadOnly: Boolean = False); overload;
+    constructor Create(OldFormat: Boolean; AData, AIndex: string; AReadOnly: Boolean = False); overload;
   protected
+    UseOldArtFormat: Boolean;
     function GetData(AID: Integer; AIndex: TGenericIndex): TMulBlock; override;
   end;
 
 implementation
 
+uses
+  Logging;
+
 { TTexmapProvider }
+
+constructor TTexmapProvider.Create(OldFormat: Boolean; AData, AIndex: TStream; AReadOnly: Boolean = False);
+begin
+  inherited Create(AData, AIndex, AReadOnly);
+  UseOldArtFormat := OldFormat;
+  if UseOldArtFormat
+    then Logger.Send([lcInfo], 'Using textures in ArtData')
+    else Logger.Send([lcInfo], 'Using textures in TexMaps');
+end;
+
+constructor TTexmapProvider.Create(OldFormat: Boolean; AData, AIndex: string; AReadOnly: Boolean = False);
+begin
+  inherited Create(AData, AIndex, AReadOnly);
+  UseOldArtFormat := OldFormat;
+  if UseOldArtFormat
+    then Logger.Send([lcInfo], 'Using textures in ArtData')
+    else Logger.Send([lcInfo], 'Using textures in TexMaps');
+end;
 
 function TTexmapProvider.GetData(AID: Integer; AIndex: TGenericIndex): TMulBlock;
 begin
-  if (AIndex.Lookup > -1) and (AIndex.Size > 0) then
-    Result := TTexture.Create(FData, AIndex)
-  else
+  if (AIndex.Lookup > -1) and (AIndex.Size > 0) then begin
+    //Result := TTexture.Create(FData, AIndex)
+    if not UseOldArtFormat
+      then Result := TTexture.Create(FData, AIndex)
+      else Result := TOldTexture.Create(Cardinal(AID));
+  end else
     Result := TTexture.Create(-1);
   Result.ID := AID;
 end;

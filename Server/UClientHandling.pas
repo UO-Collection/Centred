@@ -31,14 +31,14 @@ interface
 
 uses
   Classes, SysUtils, UPacket, UPacketHandlers, UConfig, UAccount, UNetState,
-  UEnhancedMemoryStream, UEnums, Math;
+  UEnhancedMemoryStream, UEnums, dateutils, Math;
   
 type
 
   { TClientConnectedPacket }
 
   TClientConnectedPacket = class(TPacket)
-    constructor Create(AUsername: string);
+    constructor Create(AAccount: TAccount);
   end;
   
   { TClientDisconnectedPacket }
@@ -170,11 +170,12 @@ end;
 
 { TClientConnectedPacket }
 
-constructor TClientConnectedPacket.Create(AUsername: string);
+constructor TClientConnectedPacket.Create(AAccount: TAccount);
 begin
   inherited Create($0C, 0);
   FStream.WriteByte($01);
-  FStream.WriteStringNull(AUsername);
+  FStream.WriteStringNull(AAccount.Name);
+  FStream.WriteByte(Byte(AAccount.AccessLevel));
 end;
 
 { TClientDisconnectedPacket }
@@ -200,8 +201,11 @@ begin
     repeat
       netState := TNetState(CEDServerInstance.TCPServer.Iterator.UserData);
       if (netState <> nil) and (netState <> AAvoid) and
-        (netState.Account <> nil) then
+        (netState.Account <> nil) then begin
         FStream.WriteStringNull(netState.Account.Name);
+        FStream.WriteByte(Byte(netState.Account.AccessLevel));
+        FStream.WriteDWord(DWord(SecondsBetween(netState.Account.LastLogon, CEDServerInstance.WorkStart)));
+    end;
     until not CEDServerInstance.TCPServer.IterNext;
   end;
 end;

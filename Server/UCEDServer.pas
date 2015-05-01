@@ -31,7 +31,7 @@ interface
 
 uses
   Classes, SysUtils, lNet, UEnhancedMemoryStream, UConfig, ULandscape,
-  UNetState, UPacket, dateutils,
+  UNetState, UPacket, dateutils, LConvEncoding, Language,
   {$IFDEF Linux}BaseUnix,{$ENDIF}
   {$IFDEF Windows}Windows,{$ENDIF}
   UPacketHandlers, UConnectionHandling;
@@ -44,6 +44,7 @@ type
     constructor Create;
     destructor Destroy; override;
   protected
+    FWorkStart: TDateTime;
     FLandscape: TLandscape;
     FTCPServer: TLTcp;
     FQuit: Boolean;
@@ -57,6 +58,7 @@ type
     procedure ProcessBuffer(ANetState: TNetState);
     procedure CheckNetStates;
   public
+    property WorkStart: TDateTime read FWorkStart;
     property Landscape: TLandscape read FLandscape;
     property TCPServer: TLTcp read FTCPServer;
     property Quit: Boolean read FQuit write FQuit;
@@ -79,13 +81,13 @@ uses
 {$IFDEF Linux}
 procedure OnSigInt(ASignal: cint); cdecl;
 begin
-  Writeln(TimeStamp, 'Killed');
+  Writeln(TimeStamp, GetText('Aborting'));
   if CEDServerInstance <> nil then CEDServerInstance.Quit := True;
 end;
 
 procedure OnSigSegv(ASignal: cint); cdecl;
 begin
-  Writeln(TimeStamp, 'Internal error');
+  Writeln(TimeStamp, GetText('InternEr'));
   Halt;
   //if CEDServerInstance <> nil then CEDServerInstance.Quit := True;
 end;
@@ -97,7 +99,7 @@ begin
   Result := False;
   if (ACtrl = CTRL_C_EVENT) or (ACtrl = CTRL_BREAK_EVENT) then
   begin
-    Writeln(TimeStamp, 'Killed');
+    Writeln(TimeStamp, GetText('Aborting'));
     if CEDServerInstance <> nil then CEDServerInstance.Quit := True;
     Result := True;
   end;
@@ -109,9 +111,10 @@ end;
 constructor TCEDServer.Create;
 begin
   inherited Create;
+  FWorkStart := Now;
   FLandscape := TLandscape.Create(Config.Map.MapFile, Config.Map.StaticsFile,
     Config.Map.StaIdxFile, Config.Tiledata, Config.Radarcol, Config.Map.Width,
-    Config.Map.Height, FValid);
+    Config.Map.Height, Config.Map.FormatFlags, FValid);
   FTCPServer := TLTcp.Create(nil);
   FTCPServer.OnAccept := @OnAccept;
   FTCPServer.OnCanSend := @OnCanSend;
@@ -145,7 +148,7 @@ end;
 
 procedure TCEDServer.OnAccept(ASocket: TLSocket);
 begin
-  writeln(TimeStamp, 'Connect: ', ASocket.PeerAddress);
+  writeln(TimeStamp, GetText('Connects') + ' ', ASocket.PeerAddress);
   ASocket.UserData := TNetState.Create(ASocket);
   SendPacket(TNetState(ASocket.UserData), TProtocolVersionPacket.Create(ProtocolVersion));
 end;
@@ -172,11 +175,16 @@ procedure TCEDServer.OnDisconnect(ASocket: TLSocket);
 var
   netState: TNetState;
 begin
-  writeln(TimeStamp, 'Disconnect: ', ASocket.PeerAddress);
+  writeln(TimeStamp, GetText('ConLosts') + ' ', ASocket.PeerAddress);
   if ASocket.UserData <> nil then
   begin
     netState := TNetState(ASocket.UserData);
     ASocket.UserData := nil;
+    {$IFDEF NetLog}
+    if netState.Account <> nil
+      then writeln(TimeStamp, '$OnDisconnect("',netState.Account.Name,'")')
+      else writeln(TimeStamp, '$OnDisconnect("UNKNOWN")')
+    {$ENDIF}
     if netState.Account <> nil then
       SendPacket(nil, TClientDisconnectedPacket.Create(netState.Account.Name));
     netState.Free;
@@ -203,8 +211,9 @@ end;
 
 procedure TCEDServer.OnError(const AError: string; ASocket: TLSocket);
 begin
-  writeln(TimeStamp, 'Error: ', ASocket.PeerAddress, ' :: ', AError);
+  writeln(TimeStamp, GetText('ErrorLbl') + ' ', ASocket.PeerAddress, ' :: ', TranslateTextA(AError));
   //OnDisconnect(ASocket);
+  ASocket.Disconnect(True);
 end;
 
 procedure TCEDServer.ProcessBuffer(ANetState: TNetState);
@@ -220,6 +229,12 @@ begin
     while (buffer.Size >= 1) and ANetState.Socket.Connected do
     begin
       packetID := buffer.ReadByte;
+      {$IFDEF NetLog}
+      if (ANetState.Account <> nil)
+        then writeln(TimeStamp, Format('NetState: [0x%.2x] <<-- "%s"', [packetID, ANetState.Account.Name]))
+        else writeln(TimeStamp, Format('NetState: [0x%.2x] <<-- "NEW (%s:%d)"', [packetID, ANetState.Socket.PeerAddress, ANetState.Socket.PeerPort]));
+      {$ENDIF}
+
       packetHandler := PacketHandlers[packetID];
       if packetHandler <> nil then
       begin
@@ -243,7 +258,7 @@ begin
           Break; //wait for more data
       end else
       begin
-        Writeln(TimeStamp, 'Dropping client due to unknown packet [', packetID, ']: ', ANetState.Socket.PeerAddress);
+        Writeln(TimeStamp, GetText('UnkPack1'), packetID, GetText('UnkPack2') + ' ', ANetState.Socket.PeerAddress);
         Disconnect(ANetState.Socket);
         buffer.Clear;
       end;
@@ -253,7 +268,7 @@ begin
     on E: Exception do
     begin
       Logger.SendException([lcServer], 'Error processing buffer', E);
-      Writeln(TimeStamp, 'Error processing buffer of client: ', ANetState.Socket.PeerAddress);
+      Writeln(TimeStamp, GetText('BufferEr') + ' ', ANetState.Socket.PeerAddress);
     end;
   end;
 end;
@@ -273,13 +288,16 @@ begin
         if (SecondsBetween(netState.LastAction, Now) > 120) then
         begin
           if netState.Account <> nil then
-            Writeln(TimeStamp, 'Timeout: ', netState.Account.Name, ' (', netState.Socket.PeerAddress, ')')
+            Writeln(TimeStamp, GetText('TimeOuts') + ' ', netState.Account.Name, ' (', netState.Socket.PeerAddress, ')')
           else
-            Writeln(TimeStamp, 'Timeout: ', netState.Socket.PeerAddress);
+            Writeln(TimeStamp, GetText('TimeOuts') + ' ', netState.Socket.PeerAddress);
           Disconnect(netState.Socket);
         end;
       end else   {TODO : Unnecessary ...}
       begin
+        {$IFDEF NetLog}
+        Writeln(TimeStamp, GetText('$CheckNetStates - OnDisconnect'));
+        {$ENDIF}
         OnDisconnect(FTCPServer.Iterator);
       end;
     end;
@@ -290,7 +308,7 @@ procedure TCEDServer.Run;
 begin
   if not FValid then
   begin
-    Writeln(TimeStamp, 'Invalid data. Check the map size and the files.');
+    Writeln(TimeStamp, GetText('BadFacet'));
     Exit;
   end;
 
@@ -317,22 +335,37 @@ var
 begin
   if ANetState <> nil then
   begin
+    {$IFDEF NetLog}
+    if (ANetState.Account <> nil)
+      then writeln(TimeStamp, Format('NetState: [0x%.2x] -->> "%s"', [APacket.PacketID, ANetState.Account.Name]))
+      else writeln(TimeStamp, Format('NetState: [0x%.2x] -->> "NEW (%s:%d)"', [APacket.PacketID, ANetState.Socket.PeerAddress, ANetState.Socket.PeerPort]));
+    {$ENDIF}
+
     ANetState.SendQueue.Seek(0, soFromEnd);
     ANetState.SendQueue.CopyFrom(APacket.Stream, 0);
     OnCanSend(ANetState.Socket);
   end else //broadcast
   begin
+    {$IFDEF NetLog}
+    write(TimeStamp, Format('NetState: [0x%.2x] -->> "BROADCAST: ', [APacket.PacketID]));
+    {$ENDIF}
     FTCPServer.IterReset;
     while FTCPServer.IterNext do
     begin
       netState := TNetState(FTCPServer.Iterator.UserData);
       if (netState <> nil) and (FTCPServer.Iterator.Connected) then
       begin
+        {$IFDEF NetLog}
+        write('.');
+        {$ENDIF}
         netState.SendQueue.Seek(0, soFromEnd);
         netState.SendQueue.CopyFrom(APacket.Stream, 0);
         OnCanSend(netState.Socket);
       end;
     end;
+    {$IFDEF NetLog}
+    writeln(' "');
+    {$ENDIF}
   end;
   if AFreePacket then
     APacket.Free;

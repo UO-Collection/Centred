@@ -32,8 +32,8 @@ interface
 uses
   SysUtils, Classes, math, UGenericIndex, UMap, UStatics, UWorldItem,
   UTileDataProvider, URadarMap,
-  UCacheManager, ULinkedList, UBufferedStreams,
-  UEnhancedMemoryStream, UPacketHandlers, UPackets, UNetState, UEnums;
+  UCacheManager, ULinkedList, UBufferedStreams, Language,
+  UEnhancedMemoryStream, UPacketHandlers, UPackets, UNetState, UEnums, LConvEncoding;
 
 type
   PRadarBlock = ^TRadarBlock;
@@ -79,9 +79,9 @@ type
 
   TLandscape = class
     constructor Create(AMap, AStatics, AStaIdx, ATiledata, ARadarCol: string;
-      AWidth, AHeight: Word; var AValid: Boolean);
+      AWidth, AHeight: Word; FormatFlags: Cardinal; var AValid: Boolean);
     constructor Create(AMap, AStatics, AStaIdx, ATiledata: TStream;
-      ARadarCol: string; AWidth, AHeight: Word; var AValid: Boolean);
+      ARadarCol: string; AWidth, AHeight: Word; FormatFlags: Cardinal; var AValid: Boolean);
     destructor Destroy; override;
   protected
     FWidth: Word;
@@ -194,7 +194,7 @@ begin
   for i := 0 to 63 do
     Cells[i] := TStaticItemList.Create(True);
 
-  if (AData <> nil) and (AIndex.Lookup > 0) and (AIndex.Size > 0) then
+  if (AData <> nil) and (AIndex.Lookup >= 0) and (AIndex.Size > 0) then
   begin
     AData.Position := AIndex.Lookup;
     block := TMemoryStream.Create;
@@ -285,11 +285,11 @@ end;
 { TLandscape }
 
 constructor TLandscape.Create(AMap, AStatics, AStaIdx, ATiledata,
-  ARadarCol: string; AWidth, AHeight: Word; var AValid: Boolean);
+  ARadarCol: string; AWidth, AHeight: Word; FormatFlags: Cardinal; var AValid: Boolean);
 var
   map, statics, staidx, tiledata: TStream;
 begin
-  Write(TimeStamp, 'Loading Map');
+  Write(TimeStamp, GetText('dfLoader')  + ' Map');
   map := TFileStream.Create(AMap, fmOpenReadWrite);
   Write(', Statics');
   statics := TFileStream.Create(AStatics, fmOpenReadWrite);
@@ -297,12 +297,12 @@ begin
   staidx := TBufferedReader.Create(TFileStream.Create(AStaIdx, fmOpenReadWrite), True);
   Writeln(', Tiledata');
   tiledata := TFileStream.Create(ATiledata, fmOpenRead or fmShareDenyWrite);
-  Create(map, statics, staidx, tiledata, ARadarCol, AWidth, AHeight, AValid);
+  Create(map, statics, staidx, tiledata, ARadarCol, AWidth, AHeight, FormatFlags, AValid);
   FOwnsStreams := True;
 end;
 
 constructor TLandscape.Create(AMap, AStatics, AStaIdx, ATiledata: TStream;
-  ARadarCol: string; AWidth, AHeight: Word; var AValid: Boolean);
+  ARadarCol: string; AWidth, AHeight: Word; FormatFlags: Cardinal; var AValid: Boolean);
 var
   blockID: Integer;
 begin
@@ -316,30 +316,33 @@ begin
   FStaIdx := AStaIdx;
   FTiledata := ATiledata;
   FOwnsStreams := False;
+  if (FormatFlags and $F0000000) = 0 then
+    raise Exception.Create('TLandscape.Create Unknown Format data flags.');
+  UseStaticsOldFormat := (FormatFlags and $00000001) <> 0;
+
   AValid := Validate;
   if AValid then
   begin
-    Write(TimeStamp, 'Creating Cache');
+    Write(TimeStamp, GetText('Creating') + ' ' + GetText('crtCache'));
     FBlockCache := TBlockCache.Create(256);
     FBlockCache.OnRemoveObject := @OnRemoveCachedObject;
     Write(', Tiledata');
-    FTiledataProvider := TTiledataProvider.Create(ATiledata);
-    Write(', Subscriptions');
+    FTiledataProvider := TTiledataProvider.Create((FormatFlags and $00000008) = 0, ATiledata);
+    Write(UTF8ToCP866(', ') + GetText('crtIndex')); //Subscriptions
     SetLength(FBlockSubscriptions, AWidth * AHeight);
     for blockID := 0 to AWidth * AHeight - 1 do
       FBlockSubscriptions[blockID] := TLinkedList.Create;
 
     Writeln(', RadarMap');
-    FRadarMap := TRadarMap.Create(FMap, FStatics, FStaIdx, FWidth, FHeight,
-      ARadarCol);
+    FRadarMap := TRadarMap.Create(FMap, FStatics, FStaIdx, FWidth, FHeight, ARadarCol);
 
-    RegisterPacketHandler($06, TPacketHandler.Create(8, @OnDrawMapPacket));
+    RegisterPacketHandler($06, TPacketHandler.Create( 8, @OnDrawMapPacket));
     RegisterPacketHandler($07, TPacketHandler.Create(10, @OnInsertStaticPacket));
     RegisterPacketHandler($08, TPacketHandler.Create(10, @OnDeleteStaticPacket));
     RegisterPacketHandler($09, TPacketHandler.Create(11, @OnElevateStaticPacket));
     RegisterPacketHandler($0A, TPacketHandler.Create(14, @OnMoveStaticPacket));
     RegisterPacketHandler($0B, TPacketHandler.Create(12, @OnHueStaticPacket));
-    RegisterPacketHandler($0E, TPacketHandler.Create(0, @OnLargeScaleCommandPacket));
+    RegisterPacketHandler($0E, TPacketHandler.Create( 0, @OnLargeScaleCommandPacket));
   end;
 end;
 
@@ -562,17 +565,21 @@ var
   size: Integer;
   index: TGenericIndex;
 begin
+  // Карта
   if AWorldBlock is TMapBlock then
   begin
     FMap.Position := ((AWorldBlock.X * FHeight) + AWorldBlock.Y) * 196;
     AWorldBlock.Write(FMap);
     AWorldBlock.Changed := False;
+  // Статика
   end else if AWorldBlock is TStaticBlock then
   begin
     FStaIdx.Position := ((AWorldBlock.X * FHeight) + AWorldBlock.Y) * 12;
     index := TGenericIndex.Create(FStaIdx);
     size := AWorldBlock.GetSize;
-    if (size > index.Size) or (index.Lookup < 0) then
+    // Если размер блока больше чем в мул файле или в мул файле блока нет или
+    // смещение на блок равно 0 (статика океана), то создаем новый блок в конце файла
+    if (size > index.Size) or (index.Lookup <= 0) then
     begin
       FStatics.Position := FStatics.Size;
       index.Lookup := FStatics.Position;
@@ -799,7 +806,7 @@ begin
   if (staticInfo.X = newX) and (staticInfo.Y = newY) then Exit;
   
   if ((abs(staticInfo.X - newX) > 8) or (abs(staticInfo.Y - newY) > 8)) and
-     (not ValidateAccess(ANetState, alAdministrator)) then Exit;
+     (not ValidateAccess(ANetState, alDeveloper)) then Exit;
   
   sourceBlock := GetStaticBlock(staticInfo.X div 8, staticInfo.Y div 8);
   targetBlock := GetStaticBlock(newX div 8, newY div 8);
@@ -946,10 +953,10 @@ var
   cmOperation: TLSCopyMove;
   additionalAffectedBlocks: TBits;
 begin
-  if not ValidateAccess(ANetState, alAdministrator) then Exit;
-  Writeln(TimeStamp, ANetState.Account.Name, ' begins large scale operation');
+  if not ValidateAccess(ANetState, alDeveloper) then Exit;
+  Writeln(TimeStamp, ANetState.Account.Name, ' ' + GetText('LCmdRuns'));
   CEDServerInstance.SendPacket(nil, TServerStatePacket.Create(ssOther,
-    Format('%s is performing large scale operations ...', [ANetState.Account.Name])));
+    Format(GetText('LCmdUsed'), [ANetState.Account.Name])));
 
   //Bitmask
   emptyBits := TBits.Create(64);
@@ -1157,7 +1164,7 @@ begin
   end;
 
   CEDServerInstance.SendPacket(nil, TServerStatePacket.Create(ssRunning));
-  Writeln(TimeStamp, 'Large scale operation ended.');
+  Writeln(TimeStamp, GetText('LCmdEnds'));
 end;
 
 end.

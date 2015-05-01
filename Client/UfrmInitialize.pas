@@ -38,8 +38,8 @@ type
   { TfrmInitialize }
 
   TfrmInitialize = class(TForm)
+    imgSplah: TImage;
     lblStatus: TLabel;
-    pnlMain: TPanel;
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
   protected
@@ -48,12 +48,23 @@ type
   public
     procedure SetModal;
     procedure UnsetModal;
+    procedure SetStatusLabel(message: string);
+  public // Локализация
+    SplashConnection: string;
+    SplashAuthorization: string;
+    SplashInicialization: string;
+    SplashLoading: string;
+    SplashUpdates: string;
+    SplashSuspend: string;
+    SplashUpdatingMiniMap: string;
   end; 
 
 var
   frmInitialize: TfrmInitialize;
 
 implementation
+
+uses UResourceManager;
 
 { TfrmInitialize }
 
@@ -66,6 +77,7 @@ end;
 procedure TfrmInitialize.FormCreate(Sender: TObject);
 begin
   FModal := False;
+  imgSplah.Picture.Bitmap.LoadFromStream(ResourceManager.GetResource('Overlay/Splash.bmp'));
 end;
 
 procedure TfrmInitialize.SetModal;
@@ -87,6 +99,15 @@ begin
   FActiveWindow := 0;
   //FormStyle := fsNormal;
   FModal := False;
+end;
+
+procedure TfrmInitialize.SetStatusLabel(message: string);
+begin
+  frmInitialize.lblStatus.Caption := message;
+  frmInitialize.Update;
+  frmInitialize.Repaint;
+  frmInitialize.lblStatus.Repaint;
+  Application.ProcessMessages;
 end;
 
 initialization

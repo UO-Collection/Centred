@@ -14,6 +14,7 @@ type
 
   TfrmLightlevel = class(TfrmToolWindow)
     tbLightlevel: TTrackBar;
+    procedure FormCreate(Sender: TObject);
     procedure tbLightlevelChange(Sender: TObject);
   private
     { private declarations }
@@ -27,7 +28,7 @@ var
 implementation
 
 uses
-  UfrmMain;
+  UfrmMain, Language;
 
 { TfrmLightlevel }
 
@@ -40,7 +41,13 @@ begin
   end else
     frmMain.LightManager.LightLevel := tbLightlevel.Position;
 
+  frmMain.acLightlevel.Tag:=frmMain.LightManager.LightLevel;
   frmMain.oglGameWindow.Repaint;
+end;
+
+procedure TfrmLightlevel.FormCreate(Sender: TObject);
+begin
+  LanguageTranslate(Self);
 end;
 
 initialization

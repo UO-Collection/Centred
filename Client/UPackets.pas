@@ -28,7 +28,7 @@ unit UPackets;
 interface
 
 uses
-  Classes, dzlib, UEnhancedMemoryStream, UPacket, UStatics;
+  Classes, dzlib, UEnhancedMemoryStream, UPacket, UStatics, Logging;
 
 type
   TBlockCoords = packed record
@@ -97,7 +97,7 @@ type
   TElevateStaticPacket = class(TStaticPacket)
     constructor Create(AStaticItem: TStaticItem; ANewZ: ShortInt);
     constructor Create(AX, AY: Word; AZ: ShortInt; ATileID: Word; AHue: Word;
-      ANewZ: Word);
+      ANewZ: ShortInt);
   end;
   
   { TMoveStaticPacket }
@@ -182,6 +182,7 @@ begin
   FStream.WriteByte($03);
   FStream.WriteStringNull(AUsername);
   FStream.WriteStringNull(APassword);
+  Logger.Send([lcClient, lcInfo], 'Отправлен пакет TLoginRequestPacket');
 end;
 
 { TQuitPacket }
@@ -262,7 +263,7 @@ begin
 end;
 
 constructor TElevateStaticPacket.Create(AX, AY: Word; AZ: ShortInt;
-  ATileID: Word; AHue: Word; ANewZ: Word);
+  ATileID: Word; AHue: Word; ANewZ: ShortInt);
 begin
   inherited Create($09, 11);
   FStream.WriteWord(AX);

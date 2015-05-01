@@ -39,6 +39,7 @@ type
   TfrmConfirmation = class(TForm)
     btnYes: TButton;
     btnNo: TButton;
+    procedure FormCreate(Sender: TObject);
   private
     { private declarations }
   public
@@ -49,6 +50,15 @@ var
   frmConfirmation: TfrmConfirmation;
 
 implementation
+
+uses Language;
+
+{ TfrmConfirmation }
+
+procedure TfrmConfirmation.FormCreate(Sender: TObject);
+begin
+  LanguageTranslate(Self);
+end;
 
 initialization
   {$I UfrmConfirmation.lrs}

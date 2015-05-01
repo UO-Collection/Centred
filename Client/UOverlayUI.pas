@@ -177,7 +177,7 @@ begin
   FActiveArrow := -1;
   FVisible := False;
   
-  arrow := TSingleImage.CreateFromStream(ResourceManager.GetResource(0));
+  arrow := TSingleImage.CreateFromStream(ResourceManager.GetResource('Overlay/LeftTopArrow.tga'));
   for i := 0 to 3 do
   begin
     FArrows[2*i] := TGLArrow.Create(arrow);
@@ -186,7 +186,7 @@ begin
   end;
   arrow.Free;
 
-  arrow := TSingleImage.CreateFromStream(ResourceManager.GetResource(1));
+  arrow := TSingleImage.CreateFromStream(ResourceManager.GetResource('Overlay/TopArrow.tga'));
   for i := 0 to 3 do
   begin
     FArrows[2*i+1] := TGLArrow.Create(arrow);

@@ -44,6 +44,7 @@ type
     rbSet: TRadioButton;
     seRandomHeight: TSpinEdit;
     seZ: TSpinEdit;
+    procedure FormCreate(Sender: TObject);
     procedure seRandomHeightChange(Sender: TObject);
   public
     { public declarations }
@@ -54,11 +55,18 @@ var
 
 implementation
 
+uses Language;
+
 { TfrmElevateSettings }
 
 procedure TfrmElevateSettings.seRandomHeightChange(Sender: TObject);
 begin
   cbRandomHeight.Checked := True;
+end;
+
+procedure TfrmElevateSettings.FormCreate(Sender: TObject);
+begin
+  LanguageTranslate(Self);
 end;
 
 initialization

@@ -11,7 +11,7 @@ object frmToolWindow: TfrmToolWindow
   OnDeactivate = FormDeactivate
   OnShow = FormShow
   ShowInTaskBar = stNever
-  LCLVersion = '0.9.29'
+  LCLVersion = '0.9.30'
   object tmClose: TTimer
     Enabled = False
     OnTimer = tmCloseTimer

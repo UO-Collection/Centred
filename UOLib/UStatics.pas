@@ -42,6 +42,7 @@ type
   protected
     { Members }
     FHue: Word;
+    FUnknown: Cardinal; // for old pre-alpha clients only
 
     { Methods }
     procedure SetHue(AValue: Word);
@@ -82,6 +83,11 @@ type
 
 function CompareStaticItems(const AStatic1, AStatic2: TStaticItem): Integer;
 
+var
+UseStaticsOldFormat: Boolean; // Использование старого формата pre-Alpha
+// Очень не красивое и плозое решение, но делать по уму слишком сложно, так
+// как это требует переписывание большой части кода на работу с интерфейсами.
+
 implementation
 
 function CompareStaticItems(const AStatic1, AStatic2: TStaticItem): Integer;
@@ -100,6 +106,8 @@ begin
 
   if AData <> nil then
   begin
+    if UseStaticsOldFormat
+      then AData.Read(FUnknown, SizeOf(Cardinal));;
     AData.Read(FTileID, SizeOf(SmallInt));
     AData.Read(iX, SizeOf(Byte));
     AData.Read(iY, SizeOf(Byte));
@@ -128,6 +136,7 @@ end;
 function TStaticItem.Clone: TStaticItem;
 begin
   Result := TStaticItem.Create(nil, nil);
+  Result.FUnknown:= FUnknown;
   Result.FTileID := FTileID;
   Result.FX := FX;
   Result.FY := FY;
@@ -137,7 +146,9 @@ end;
 
 function TStaticItem.GetSize: Integer;
 begin
-  Result := 7;
+  if not UseStaticsOldFormat
+    then Result := 7
+    else Result := 11;
 end;
 
 procedure TStaticItem.UpdatePriorities(ATileData: TStaticTiledata;
@@ -159,6 +170,8 @@ begin
   iX := FX mod 8;
   iY := FY mod 8;
 
+  if UseStaticsOldFormat
+    then AData.Write(FUnknown, SizeOf(Cardinal));;
   AData.Write(FTileID, SizeOf(SmallInt));
   AData.Write(iX, SizeOf(Byte));
   AData.Write(iY, SizeOf(Byte));
@@ -171,7 +184,7 @@ end;
 constructor TStaticBlock.Create(AData: TStream; AIndex: TGenericIndex;
   AX, AY: Word);
 var
-  i: Integer;
+  i, size: Integer;
   block: TMemoryStream;
 begin
   inherited Create;
@@ -179,13 +192,16 @@ begin
   FY := AY;
 
   FItems := TStaticItemList.Create(True);
-  if (AData <> nil) and (AIndex.Lookup > 0) and (AIndex.Size > 0) then
+  if (AData <> nil) and (AIndex.Lookup >= 0) and (AIndex.Size > 0) then
   begin
     AData.Position := AIndex.Lookup;
     block := TMemoryStream.Create;
     block.CopyFrom(AData, AIndex.Size);
     block.Position := 0;
-    for i := 1 to (AIndex.Size div 7) do
+    if not UseStaticsOldFormat
+      then size := 7
+      else size := 11;
+    for i := 1 to (AIndex.Size div size) do
       FItems.Add(TStaticItem.Create(Self, block, AX, AY));
     block.Free;
   end;
@@ -214,7 +230,9 @@ end;
 
 function TStaticBlock.GetSize: Integer;
 begin
-  Result := FItems.Count * 7;
+  if not UseStaticsOldFormat
+    then Result := FItems.Count * 7
+    else Result := FItems.Count * 11;
 end;
 
 procedure TStaticBlock.ReverseWrite(AData: TStream);

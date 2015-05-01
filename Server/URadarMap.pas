@@ -60,7 +60,7 @@ type
 implementation
 
 uses
-  UPacket, UPackets, UPacketHandlers, UCEDServer, crc;
+  UPacket, UPackets, UPacketHandlers, UCEDServer, crc, UStatics;
 
 type
   TMulIndex = packed record
@@ -71,6 +71,13 @@ type
   TMapCell = packed record
     TileID: Word;
     Altitude: ShortInt;
+  end;
+  TOldStaticItem = packed record
+    Unknown: Cardinal;
+    TileID: Word;
+    X, Y: Byte;
+    Z: ShortInt;
+    Hue: Word;
   end;
   TStaticItem = packed record
     TileID: Word;
@@ -138,6 +145,7 @@ var
   radarcol: TFileStream;
   count, i, item, highestZ: Integer;
   staticsItems: array of TStaticItem;
+  oldStaticsItems: array of TOldStaticItem;
   mapCell: TMapCell;
   index: TMulIndex;
 begin
@@ -161,21 +169,39 @@ begin
     AMap.Seek(193, soFromCurrent);
     FRadarMap[i] := FRadarColors[mapCell.TileID];
     AStaIdx.Read(index, SizeOf(TMulIndex));
-    if (index.Position < $FFFFFFFF) and (index.Size > 0) then
+    if (index.Position < $FFFFFFFF) and (index.Size > 0)
+       and (index.Position + index.Size < AStatics.Size) then
     begin
       AStatics.Position := index.Position;
-      SetLength(staticsItems, index.Size div 7);
-      AStatics.Read(staticsItems[0], index.Size);
-      highestZ := mapCell.Altitude;
-      for item := Low(staticsItems) to High(staticsItems) do
+      if not UseStaticsOldFormat then
       begin
-        if (staticsItems[item].X = 0) and (staticsItems[item].Y = 0) and
-          (staticsItems[item].Z >= highestZ) then
+        SetLength(staticsItems, index.Size div 7);
+        AStatics.Read(staticsItems[0], index.Size);
+        highestZ := mapCell.Altitude;
+        for item := Low(staticsItems) to High(staticsItems) do
         begin
-          highestZ := staticsItems[item].Z;
-          FRadarMap[i] := FRadarColors[staticsItems[item].TileID + $4000];
+          if (staticsItems[item].X = 0) and (staticsItems[item].Y = 0) and
+            (staticsItems[item].Z >= highestZ) then
+          begin
+            highestZ := staticsItems[item].Z;
+            FRadarMap[i] := FRadarColors[staticsItems[item].TileID + $4000];
+          end;
+        end;
+      end else begin
+        SetLength(oldStaticsItems, index.Size div 11);
+        AStatics.Read(oldStaticsItems[0], index.Size);
+        highestZ := mapCell.Altitude;
+        for item := Low(oldStaticsItems) to High(oldStaticsItems) do
+        begin
+          if (oldStaticsItems[item].X = 0) and (oldStaticsItems[item].Y = 0) and
+            (oldStaticsItems[item].Z >= highestZ) then
+          begin
+            highestZ := oldStaticsItems[item].Z;
+            FRadarMap[i] := FRadarColors[oldStaticsItems[item].TileID + $4000];
+          end;
         end;
       end;
+
     end;
   end;
   

@@ -1,29 +1,30 @@
 <?xml version="1.0"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="7"/>
+    <Version Value="9"/>
     <General>
       <Flags>
         <MainUnitHasUsesSectionForAllUnits Value="False"/>
+        <MainUnitHasCreateFormStatements Value="False"/>
         <LRSInOutputDirectory Value="False"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
       <MainUnit Value="0"/>
-      <TargetFileExt Value=".exe"/>
+      <UseAppBundle Value="False"/>
+      <UseXPManifest Value="True"/>
+      <Icon Value="0"/>
     </General>
     <VersionInfo>
       <UseVersionInfo Value="True"/>
-      <CurrentMajorRevNr Value="6"/>
-      <CurrentMinorRevNr Value="1"/>
-      <CurrentBuildNr Value="209"/>
-      <ProjectVersion Value="0.6.1.209"/>
-      <CompanyName Value="AKS DataBasis"/>
-      <FileDescription Value="CentrED Server"/>
-      <InternalName Value="CentrED Server"/>
-      <LegalCopyright Value="Andreas Schneider"/>
-      <OriginalFilename Value="cedserver.exe"/>
-      <ProductName Value="CentrED"/>
+      <AutoIncrementBuild Value="True"/>
+      <MinorVersionNr Value="7"/>
+      <RevisionNr Value="7"/>
+      <BuildNr Value="261"/>
+      <StringTable CompanyName="www.uoquint.ru" FileDescription="UO CentrED+ Server" InternalName="CentrED+ Server" LegalCopyright="StaticZ" OriginalFilename="cedserver.exe" ProductName="CentrED+ Server" ProductVersion=""/>
     </VersionInfo>
+    <BuildModes Count="1">
+      <Item1 Name="default" Default="True"/>
+    </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
       <IncludeFileFilter Value="*.(pas|pp|inc|lfm|lpr|lrs|lpi|lpk|sh|xml)"/>
@@ -43,7 +44,7 @@
         <PackageName Value="lnetbase"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="16">
+    <Units Count="17">
       <Unit0>
         <Filename Value="cedserver.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -124,40 +125,41 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="UMap"/>
       </Unit15>
+      <Unit16>
+        <Filename Value="language.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Language"/>
+      </Unit16>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
-    <Version Value="8"/>
+    <Version Value="9"/>
     <Target>
-      <Filename Value="../bin/cedserver"/>
+      <Filename Value="../bin/PEBinaries/cedserver.exe"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="../;../Imaging/"/>
-      <OtherUnitFiles Value="../;../UOLib/;../MulProvider/;../Imaging/ZLib/"/>
+      <IncludeFiles Value="..;../obj;../Imaging"/>
+      <OtherUnitFiles Value="..;../UOLib;../Server;../MulProvider;../Imaging;../Imaging/JpegLib;../Imaging/ZLib;../Client"/>
       <UnitOutputDirectory Value="../obj"/>
-      <SrcPath Value="../;../UOLib/;../MulProvider/;../Imaging/ZLib/"/>
     </SearchPaths>
     <Parsing>
       <SyntaxOptions>
-        <CStyleOperator Value="False"/>
+        <UseAnsiStrings Value="False"/>
       </SyntaxOptions>
     </Parsing>
     <CodeGeneration>
-      <SmartLinkUnit Value="True"/>
+      <TargetProcessor Value="pentium4"/>
+      <TargetCPU Value="i386"/>
+      <TargetOS Value="win32"/>
       <Optimizations>
         <OptimizationLevel Value="3"/>
       </Optimizations>
     </CodeGeneration>
-    <Linking>
-      <Debugging>
-        <UseLineInfoUnit Value="False"/>
-        <StripSymbols Value="True"/>
-      </Debugging>
-      <LinkSmart Value="True"/>
-    </Linking>
     <Other>
-      <CustomOptions Value="-FE../bin/
--dNoLogging"/>
+      <CompilerMessages>
+        <UseMsgFile Value="True"/>
+      </CompilerMessages>
+      <CustomOptions Value="-dWindows"/>
       <CompilerPath Value="$(CompPath)"/>
     </Other>
   </CompilerOptions>

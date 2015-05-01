@@ -31,9 +31,20 @@ interface
 
 uses
   Classes, SysUtils, Imaging, ImagingTypes, ImagingClasses, ImagingCanvases,
-  ImagingOpenGL, GL, GLu, GLext, fgl, ULandscape, UWorldItem, UCacheManager;
+  ImagingOpenGL, GL, GLu, GLext, fgl, ULandscape, UWorldItem, UCacheManager,
+  Math, DOM, XMLRead;
+
+const
+  ColorsCount = 15;
 
 type
+
+  TLightColor = record
+    r: Float;
+    g: Float;
+    b: Float;
+  end;
+  PLightColor = ^TLightColor;
 
   TCalculateOffset = procedure(AX, AY: Integer; out DrawX, DrawY: Integer) of object;
 
@@ -55,14 +66,16 @@ type
   { TLightSource }
 
   TLightSource = class
-    constructor Create(AManager: TLightManager; AWorldItem: TWorldItem);
+    constructor Create(AManager: TLightManager; AWorldItem: TWorldItem; Zoom: Single);
     destructor Destroy; override;
   protected
+    FColorID: Byte;
     FX: Integer;
     FY: Integer;
     FZ: SmallInt;
     FMaterial: TLightMaterial;
   public
+    property ColorID: Byte read FColorID;
     property X: Integer read FX;
     property Y: Integer read FY;
     property Z: SmallInt read FZ;
@@ -88,24 +101,132 @@ type
     FInitialized: Boolean;
     function GetLight(AID: Integer): TLightMaterial;
     procedure SetLightLevel(AValue: Byte);
-    procedure UpdateOverlay(AScreenRect: TRect);
+    procedure UpdateOverlay(AScreenRect: TRect; Zoom: Single);
   public
     property LightLevel: Byte read FLightLevel write SetLightLevel;
     procedure InitGL;
     procedure UpdateLightMap(ALeft, AWidth, ATop, AHeight: Integer;
-      AScreenBuffer: TScreenBuffer);
-    procedure Draw(AScreenRect: TRect);
+      AScreenBuffer: TScreenBuffer; Zoom: Single);
+    procedure Draw(AScreenRect: TRect; Zoom: Single);
+
+  public
+    procedure LoadConfig(AFileName: String);
+    public
+    LColors: array[1..ColorsCount] of TLightColor;
+    TileCol: ^Byte;
   end;
+
 
 implementation
 
 uses
-  UGameResources, UTiledata, UStatics, UMap, ULight, Logging;
+  UGameResources, UTiledata, UStatics, UMap, ULight, Logging, UfrmMain, UfrmInitialize;
 
 { TLightManager }
 
-constructor TLightManager.Create(ACalculateOffset: TCalculateOffset);
+procedure TLightManager.LoadConfig(AFileName: String);
+var
+  XMLDoc:  TXMLDocument;
+  iNode, node: TDOMNode;
+  s: string;
+  i, id, col, r, g, b: Integer;
 begin
+  for i := 1 to ColorsCount do begin
+    LColors[i].R := 1.0;
+    LColors[i].G := 1.0;
+    LColors[i].B := 1.0;
+  end;
+  if (TileCol <> nil) then
+    Freemem(TileCol);
+  Getmem(TileCol, (ResMan.Landscape.MaxStaticID + 1) * SizeOf(Byte));
+  for i := 0 to ResMan.Landscape.MaxStaticID do
+    TileCol[i] := 1;
+
+  frmInitialize.SetStatusLabel(Format(frmInitialize.SplashLoading, ['ColorLight.xml']));
+  // Читаем xml файл с жесткого диска
+  ReadXMLFile(XMLDoc, AFileName);
+  if LowerCase(XMLDoc.DocumentElement.NodeName) = 'colorlight' then
+  begin
+    iNode := XMLDoc.DocumentElement.FirstChild;
+    while iNode <> nil do
+    begin
+      if LowerCase(iNode.NodeName) = 'colors' then
+      begin
+        node := iNode.FirstChild;
+        while node <> nil do
+        begin
+          if (LowerCase(node.NodeName) = 'color') then begin
+            id := -1;
+            r := 255;
+            g := 255;
+            b := 255;
+            for i := node.Attributes.Length - 1 downto 0 do
+            begin
+              s := LowerCase(node.Attributes[i].NodeName);
+              if (s = 'id') then
+                TryStrToInt(node.Attributes[i].NodeValue, id);
+              if (s = 'r') then
+                TryStrToInt(node.Attributes[i].NodeValue, r);
+              if (s = 'g') then
+                TryStrToInt(node.Attributes[i].NodeValue, g);
+              if (s = 'b') then
+                TryStrToInt(node.Attributes[i].NodeValue, b);
+            end;
+            if (id > 0) and (id <= ColorsCount) then begin
+              if (r <   0) then r :=   0;
+              if (g <   0) then g :=   0;
+              if (b <   0) then b :=   0;
+              if (r > 255) then r := 255;
+              if (g > 255) then g := 255;
+              if (b > 255) then b := 255;
+              LColors[id].R := (Float(r)) / 255.0;
+              LColors[id].G := (Float(g)) / 255.0;
+              LColors[id].B := (Float(b)) / 255.0;
+            end;
+          end;
+          node := node.NextSibling;
+        end;
+      end;
+      if LowerCase(iNode.NodeName) = 'sources' then
+      begin
+        node := iNode.FirstChild;
+        while node <> nil do
+        begin
+          s := LowerCase(node.NodeName);
+          if (s = 'tile') or (s = 'item') then begin
+            col := 1;
+            id := -1;
+            for i := node.Attributes.Length - 1 downto 0 do begin
+              if LowerCase(node.Attributes[i].NodeName) = 'id' then
+                if TryStrToInt(node.Attributes[i].NodeValue, id) then
+                begin
+                  if s = 'tile'
+                    then Dec(id, $4000);
+                end;
+              if LowerCase(node.Attributes[i].NodeName) = 'color' then
+                if TryStrToInt(node.Attributes[i].NodeValue, col) then
+                begin
+                  if (col < 1) or (col > ColorsCount)
+                    then col := 1;
+                end;
+            end;
+            if (id >= 0) and (id <= ResMan.Landscape.MaxStaticID)
+              then TileCol[id] := col;
+          end;
+          node := node.NextSibling;
+        end;
+      end;
+      iNode := iNode.NextSibling;
+    end;
+  end;
+end;
+
+constructor TLightManager.Create(ACalculateOffset: TCalculateOffset);
+var
+  i: Integer;
+begin
+  TileCol := nil;
+
   FCalculateOffset := ACalculateOffset;
   FLightSources := TLightSources.Create(True);
   FLightLevel := 0;
@@ -115,6 +236,10 @@ end;
 
 destructor TLightManager.Destroy;
 begin
+  if (TileCol <> nil) then begin
+    Freemem(TileCol);
+    TileCol := nil;
+  end;
   FreeAndNil(FLightSources);
   FreeAndNil(FOverlay);
   FreeAndNil(FLightCache);
@@ -145,7 +270,7 @@ begin
   FValid := False;
 end;
 
-procedure TLightManager.UpdateOverlay(AScreenRect: TRect);
+procedure TLightManager.UpdateOverlay(AScreenRect: TRect; Zoom: Single);
 var
   canvas: TFastARGB32Canvas;
   color: TColor32Rec;
@@ -153,6 +278,7 @@ var
   lightMaterial: TLightMaterial;
   colorGL: GLclampf;
   fbo: GLuint;
+  ptilcol: PLightColor;
 begin
   glDeleteTextures(1, @FOverlayTexture);
   if FUseFBO then
@@ -182,23 +308,25 @@ begin
         lightMaterial := FLightSources[i].Material;
         if lightMaterial <> nil then
         begin
+          ptilcol := @LColors[FLightSources[i].ColorID];
           glBindTexture(GL_TEXTURE_2D, lightMaterial.Texture);
+          glColor3f(ptilcol^.R, ptilcol^.G, ptilcol^.B);
           glBegin(GL_QUADS);
             glTexCoord2i(0, 0);
-            glVertex2i(FLightSources[i].FX - lightMaterial.RealWidth div 2,
-              FLightSources[i].FY - lightMaterial.RealHeight div 2);
+            glVertex2i(FLightSources[i].FX - Trunc(Zoom*lightMaterial.RealWidth) div 2,
+              FLightSources[i].FY - Trunc(Zoom*lightMaterial.RealHeight) div 2);
             glTexCoord2i(0, 1);
-            glVertex2i(FLightSources[i].FX - lightMaterial.RealWidth div 2,
-              FLightSources[i].FY - lightMaterial.RealHeight div 2 +
-              lightMaterial.Height);
+            glVertex2i(FLightSources[i].FX - Trunc(Zoom*lightMaterial.RealWidth) div 2,
+              FLightSources[i].FY - Trunc(Zoom*lightMaterial.RealHeight) div 2 +
+              Trunc(Zoom*lightMaterial.Height));
             glTexCoord2i(1, 1);
-            glVertex2i(FLightSources[i].FX - lightMaterial.RealWidth div 2 +
-              lightMaterial.Width, FLightSources[i].FY -
-              lightMaterial.RealHeight div 2 + lightMaterial.Height);
+            glVertex2i(FLightSources[i].FX - Trunc(Zoom*lightMaterial.RealWidth) div 2 +
+              Trunc(Zoom*lightMaterial.Width), FLightSources[i].FY -
+              Trunc(Zoom*lightMaterial.RealHeight) div 2 + Trunc(Zoom*lightMaterial.Height));
             glTexCoord2i(1, 0);
-            glVertex2i(FLightSources[i].FX - lightMaterial.RealWidth div 2 +
-              lightMaterial.Width,
-              FLightSources[i].FY - lightMaterial.RealHeight div 2);
+            glVertex2i(FLightSources[i].FX - Trunc(Zoom*lightMaterial.RealWidth) div 2 +
+              Trunc(Zoom*lightMaterial.Width),
+              FLightSources[i].FY - Trunc(Zoom*lightMaterial.RealHeight) div 2);
           glEnd;
         end;
       end;
@@ -227,8 +355,8 @@ begin
         if lightMaterial <> nil then
         begin
           lightMaterial.Canvas.DrawAdd(lightMaterial.Canvas.ClipRect, canvas,
-            FLightSources[i].FX - lightMaterial.RealWidth div 2,
-            FLightSources[i].FY - lightMaterial.RealHeight div 2);
+            FLightSources[i].FX - Trunc(Zoom*lightMaterial.RealWidth) div 2,
+            FLightSources[i].FY - Trunc(Zoom*lightMaterial.RealHeight) div 2);
         end;
       end;
     finally
@@ -247,7 +375,7 @@ begin
 end;
 
 procedure TLightManager.UpdateLightMap(ALeft, AWidth, ATop, AHeight: Integer;
-  AScreenBuffer: TScreenBuffer);
+  AScreenBuffer: TScreenBuffer; Zoom: Single);
 var
   blockInfo: PBlockInfo;
   lights: TWorldItemList;
@@ -279,8 +407,10 @@ begin
       if tdfLightSource in tileData.Flags then
         lights.Add(blockInfo^.Item)
       else
-        tileMap[blockInfo^.Item.X - ALeft, blockInfo^.Item.Y - ATop] :=
-          blockInfo^.Item;
+        x := blockInfo^.Item.X - ALeft;
+        y := blockInfo^.Item.Y - ATop;
+        if InRange(x, 0, AWidth - 1) and InRange(y, 0, AHeight - 1) then
+          tileMap[x, y] := blockInfo^.Item;
     end;
   end;
 
@@ -288,9 +418,10 @@ begin
   begin
     x := lights[i].X + 1 - ALeft;
     y := lights[i].Y + 1 - ATop;
-    if (x = AWidth) or (y = AHeight) or (tileMap[x,y] = nil) or
-      (tileMap[x,y].Z < lights[i].Z + 5) then
-      FLightSources.Add(TLightSource.Create(Self, lights[i]));
+    if (x = AWidth) or (y = AHeight) or
+      (InRange(x, 0, AWidth - 1) and InRange(y, 0, AHeight - 1) and
+        ((tileMap[x,y] = nil) or (tileMap[x,y].Z < lights[i].Z + 5))) then
+      FLightSources.Add(TLightSource.Create(Self, lights[i], Zoom));
   end;
 
   lights.Free;
@@ -299,7 +430,7 @@ begin
   //Logger.ExitMethod([lcClient, lcDebug], 'UpdateLightMap');
 end;
 
-procedure TLightManager.Draw(AScreenRect: TRect);
+procedure TLightManager.Draw(AScreenRect: TRect; Zoom: Single);
 begin
   if not FInitialized then
     InitGL;
@@ -307,38 +438,41 @@ begin
   glColor4f(1, 1, 1, 1);
 
   if not FValid then
-    UpdateOverlay(AScreenRect);
+    UpdateOverlay(AScreenRect, Zoom);
 
   glBindTexture(GL_TEXTURE_2D, FOverlayTexture);
   glBlendFunc(GL_ZERO, GL_SRC_COLOR);
   glBegin(GL_QUADS);
+  Zoom := 1.0;
   if FUseFBO then
   begin
+    glColor3f(1.0, 1.0, 1.0);
     glTexCoord2i(0, 1);
-    glVertex2i(AScreenRect.Left, AScreenRect.Top);
+    glVertex2i(Trunc(Zoom*AScreenRect.Left), Trunc(Zoom*AScreenRect.Top));
     glTexCoord2i(0, 0);
-    glVertex2i(AScreenRect.Left, AScreenRect.Bottom);
+    glVertex2i(Trunc(Zoom*AScreenRect.Left), Trunc(Zoom*AScreenRect.Bottom));
     glTexCoord2i(1, 0);
-    glVertex2i(AScreenRect.Right, AScreenRect.Bottom);
+    glVertex2i(Trunc(Zoom*AScreenRect.Right), Trunc(Zoom*AScreenRect.Bottom));
     glTexCoord2i(1, 1);
-    glVertex2i(AScreenRect.Right, AScreenRect.Top);
+    glVertex2i(Trunc(Zoom*AScreenRect.Right), Trunc(Zoom*AScreenRect.Top));
   end else
   begin
+    glColor3f(1.0, 1.0, 1.0);
     glTexCoord2i(0, 0);
-    glVertex2i(AScreenRect.Left, AScreenRect.Top);
+    glVertex2i(Trunc(Zoom*AScreenRect.Left), Trunc(Zoom*AScreenRect.Top));
     glTexCoord2i(0, 1);
-    glVertex2i(AScreenRect.Left, AScreenRect.Bottom);
+    glVertex2i(Trunc(Zoom*AScreenRect.Left), Trunc(Zoom*AScreenRect.Bottom));
     glTexCoord2i(1, 1);
-    glVertex2i(AScreenRect.Right, AScreenRect.Bottom);
+    glVertex2i(Trunc(Zoom*AScreenRect.Right), Trunc(Zoom*AScreenRect.Bottom));
     glTexCoord2i(1, 0);
-    glVertex2i(AScreenRect.Right, AScreenRect.Top);
+    glVertex2i(Trunc(Zoom*AScreenRect.Right), Trunc(Zoom*AScreenRect.Top));
   end;
   glEnd;
 end;
 
 { TLightSource }
 
-constructor TLightSource.Create(AManager: TLightManager; AWorldItem: TWorldItem);
+constructor TLightSource.Create(AManager: TLightManager; AWorldItem: TWorldItem; Zoom: Single);
 var
   lightID: Byte;
 begin
@@ -346,9 +480,12 @@ begin
   FMaterial := AManager.GetLight(lightID);
   if FMaterial <> nil then
   begin
+    FColorID := AManager.TileCol[AWorldItem.TileID];
+    if (FColorID < 1) or (FColorID > ColorsCount)
+    then FColorID := 1;
     AManager.FCalculateOffset(AWorldItem.X, AWorldItem.Y, FX, FY);
     FZ := AWorldItem.Z * 4;
-    FY := FY + 22 - FZ;
+    FY := FY + Trunc(Zoom*(22 - FZ));
     FMaterial.AddRef;
   end;
 end;

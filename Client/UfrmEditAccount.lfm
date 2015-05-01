@@ -1,39 +1,39 @@
 object frmEditAccount: TfrmEditAccount
-  Left = 290
+  Left = 1146
   Height = 214
-  Top = 171
+  Top = 205
   Width = 261
-  ActiveControl = PageControl1
   BorderIcons = [biSystemMenu]
   BorderStyle = bsDialog
-  Caption = 'Edit Account'
+  Caption = 'Редактирование аккаунта'
   ClientHeight = 214
   ClientWidth = 261
   Font.Height = -11
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
-  ParentFont = False
   Position = poOwnerFormCenter
-  LCLVersion = '0.9.27'
+  LCLVersion = '0.9.30.2'
   object PageControl1: TPageControl
+    Left = 0
     Height = 173
+    Top = 0
     Width = 261
     ActivePage = tsGeneral
     Align = alClient
     TabIndex = 0
     TabOrder = 0
     object tsGeneral: TTabSheet
-      Caption = 'General'
-      ClientHeight = 148
-      ClientWidth = 259
+      Caption = 'Общие'
+      ClientHeight = 147
+      ClientWidth = 253
       object lblPasswordHint: TLabel
         Left = 86
         Height = 28
         Top = 64
         Width = 160
         AutoSize = False
-        Caption = 'Leave empty to leave the password unchanged.'
+        Caption = 'Не заполнять поле, если не хотите изменить пароль.'
         Enabled = False
         ParentColor = False
         WordWrap = True
@@ -42,29 +42,29 @@ object frmEditAccount: TfrmEditAccount
         Left = 6
         Height = 14
         Top = 12
-        Width = 58
-        Caption = 'Username:'
+        Width = 46
+        Caption = 'Аккаунт:'
         ParentColor = False
       end
       object lblPassword: TLabel
         Left = 6
         Height = 14
         Top = 44
-        Width = 54
-        Caption = 'Password:'
+        Width = 44
+        Caption = 'Пароль:'
         ParentColor = False
       end
       object lblAccessLevel: TLabel
         Left = 6
         Height = 14
         Top = 108
-        Width = 63
-        Caption = 'Accesslevel:'
+        Width = 37
+        Caption = 'Права:'
         ParentColor = False
       end
       object edUsername: TEdit
         Left = 86
-        Height = 23
+        Height = 21
         Top = 8
         Width = 160
         Color = clBtnFace
@@ -73,7 +73,7 @@ object frmEditAccount: TfrmEditAccount
       end
       object edPassword: TEdit
         Left = 86
-        Height = 23
+        Height = 21
         Top = 40
         Width = 160
         EchoMode = emPassword
@@ -82,13 +82,15 @@ object frmEditAccount: TfrmEditAccount
       end
       object cbAccessLevel: TComboBox
         Left = 86
-        Height = 25
+        Height = 21
         Top = 104
         Width = 160
+        ItemHeight = 13
         Items.Strings = (
           'None'
           'Viewer'
           'Normal'
+          'Developer'
           'Administrator'
         )
         Style = csDropDownList
@@ -96,35 +98,34 @@ object frmEditAccount: TfrmEditAccount
       end
     end
     object tsRegions: TTabSheet
-      Caption = 'Regions'
-      ClientHeight = 148
-      ClientWidth = 259
+      Caption = 'Регионы'
+      ClientHeight = 147
+      ClientWidth = 253
       object Label1: TLabel
         Left = 8
         Height = 14
         Top = 8
-        Width = 243
+        Width = 237
         Align = alTop
         BorderSpacing.Left = 8
         BorderSpacing.Top = 8
         BorderSpacing.Right = 8
         BorderSpacing.Bottom = 4
-        Caption = 'Allowed Regions:'
+        Caption = 'Разрешенные регионы:'
         ParentColor = False
       end
       object cbRegions: TCheckListBox
         Left = 8
-        Height = 114
+        Height = 113
         Top = 26
-        Width = 243
+        Width = 237
         Align = alClient
         BorderSpacing.Left = 8
         BorderSpacing.Top = 4
         BorderSpacing.Right = 8
         BorderSpacing.Bottom = 8
-        ItemHeight = 13
+        ItemHeight = 0
         TabOrder = 0
-        TopIndex = -1
       end
     end
   end
@@ -142,18 +143,20 @@ object frmEditAccount: TfrmEditAccount
     object btnCancel: TButton
       Left = 170
       Height = 25
+      Top = 0
       Width = 75
       Align = alRight
       BorderSpacing.Left = 4
       BorderSpacing.InnerBorder = 4
       Cancel = True
-      Caption = 'Cancel'
+      Caption = 'Отмена'
       ModalResult = 2
       TabOrder = 0
     end
     object btnOK: TButton
       Left = 91
       Height = 25
+      Top = 0
       Width = 75
       Align = alRight
       BorderSpacing.Right = 4

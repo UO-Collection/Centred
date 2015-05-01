@@ -31,9 +31,9 @@ interface
 
 uses
   SysUtils, Classes, math, matrix, LCLIntf, GL, GLu, ImagingOpenGL, Imaging,
-  ImagingClasses, ImagingTypes, ImagingUtility,
+  ImagingClasses, ImagingTypes, ImagingUtility, DOM, XMLRead,
   UGenericIndex, UMap, UStatics, UArt, UTexture, UTiledata, UHue, UWorldItem,
-  UMulBlock, UAnimData,
+  UMulBlock, UAnimData, UfrmInitialize,
   UEnhancedMemoryStream, UGLFont,
   UCacheManager;
 
@@ -70,6 +70,7 @@ type
     procedure AddRef;
     procedure DelRef;
     function HitTest(AX, AY: Integer): Boolean;
+    function HitTest(AX, AY: Integer; Zoom: Single): Boolean;
 
     {ICacheable}
     function CanBeRemoved: Boolean;
@@ -89,7 +90,7 @@ type
   { TAnimMaterial }
 
   TAnimMaterial = class(TMaterial)
-    constructor Create(ABaseID: Word; AAnimData: TAnimData; AHue: THue = nil;
+    constructor Create(ABaseID: LongWord; AAnimData: TAnimData; AHue: THue = nil;
       APartialHue: Boolean = False);
     destructor Destroy; override;
   protected
@@ -114,12 +115,12 @@ type
     FUseAnims: Boolean;
   public
     property UseAnims: Boolean read FUseAnims write FUseAnims;
-    function GetArtMaterial(ATileID: Word): TMaterial; overload;
-    function GetArtMaterial(ATileID: Word; AHue: THue;
+    function GetArtMaterial(ATileID: LongWord): TMaterial; overload;
+    function GetArtMaterial(ATileID: LongWord; AHue: THue;
       APartialHue: Boolean): TMaterial; overload;
     function GetStaticMaterial(AStaticItem: TStaticItem;
       AOverrideHue: Integer = -1): TMaterial;
-    function GetTexMaterial(ATileID: Word): TMaterial;
+    function GetTexMaterial(ATileID: LongWord): TMaterial;
   end;
 
  { TSeperatedStaticBlock }
@@ -175,6 +176,7 @@ type
     FCellWidth: Word;
     FCellHeight: Word;
     FBlockCache: TBlockCache;
+    FBlockCacheBak: TBlockCache;
     FOnChange: TLandscapeChangeEvent;
     FOnMapChanged: TMapChangedEvent;
     FOnNewBlock: TNewBlockEvent;
@@ -186,10 +188,11 @@ type
     FWriteMap: TBits;
     FDrawMap: TBits;
     FMaxStaticID: Cardinal;
+    BlockCacheSize: Integer;
     { Methods }
     function GetMapBlock(AX, AY: Word): TMapBlock;
-    function GetMapCell(AX, AY: Word): TMapCell;
-    function GetNormals(AX, AY: Word): TNormals;
+    function GetMapCell(AX, AY: Integer): TMapCell;
+    function GetNormals(AX, AY: Integer): TNormals;
     function GetStaticBlock(AX, AY: Word): TSeperatedStaticBlock;
     function GetStaticList(AX, AY: Word): TStaticItemList;
     { Events }
@@ -207,9 +210,9 @@ type
     property Height: Word read FHeight;
     property CellWidth: Word read FCellWidth;
     property CellHeight: Word read FCellHeight;
-    property MapCell[X, Y: Word]: TMapCell read GetMapCell;
+    property MapCell[X, Y: Integer]: TMapCell read GetMapCell;
     property StaticList[X, Y: Word]: TStaticItemList read GetStaticList;
-    property Normals[X, Y: Word]: TNormals read GetNormals;
+    property Normals[X, Y: Integer]: TNormals read GetNormals;
     property MaxStaticID: Cardinal read FMaxStaticID;
     property OnChange: TLandscapeChangeEvent read FOnChange write FOnChange;
     property OnMapChanged: TMapChangedEvent read FOnMapChanged write FOnMapChanged;
@@ -224,9 +227,9 @@ type
       write FOnStaticHued;
     { Methods }
     function CanWrite(AX, AY: Word): Boolean;
-    procedure FillDrawList(ADrawList: TScreenBuffer; AX, AY, AWidth,
-      AHeight: Word; AMap, AStatics: Boolean; ANoDraw: Boolean;
-      AAdditionalTiles: TWorldItemList = nil);
+    procedure FillDrawList(ADrawList: TScreenBuffer; AX, AY, AWidth, AHeight: Word;
+      AMap, AStatics, ATDWalls, ATDBridges, ATDRoofs, ATDSurfaces, ATDFoliage, ATDWet: Boolean;
+      ANoDraw: Boolean; AAdditionalTiles: TWorldItemList = nil);
     function GetEffectiveAltitude(ATile: TMapCell): ShortInt;
     function GetLandAlt(AX, AY: Word; ADefault: ShortInt): ShortInt;
     procedure GetNormals(AX, AY: Word; var ANormals: TNormals);
@@ -235,6 +238,7 @@ type
     procedure PrepareBlocks(AX1, AY1, AX2, AY2: Word);
     procedure UpdateBlockAccess;
     procedure UpdateWriteMap(AStream: TEnhancedMemoryStream);
+    procedure ResizeBlockCache(Count: Integer);
   end;
 
   { TGLText }
@@ -258,6 +262,8 @@ type
     ScreenRect: TRect;
     DrawQuad: array[0..3,0..1] of TGLint;
     RealQuad: array[0..3,0..1] of TGLint;
+    LineWidth: array[0..2] of GLfloat;
+    LineDraw: array[0..2,0..1,0..1] of TGLint;
     Item: TWorldItem;
     HighRes: TMaterial;
     LowRes: TMaterial;
@@ -265,6 +271,7 @@ type
     State: TScreenState;
     Highlighted: Boolean;
     HueOverride: Boolean;
+    Hue: Word;
     CheckRealQuad: Boolean;
     Translucent: Boolean;
     WalkRestriction: TWalkRestriction;
@@ -288,7 +295,8 @@ type
     function Add(AItem: TWorldItem): PBlockInfo;
     procedure Clear;
     procedure Delete(AItem: TWorldItem);
-    function Find(AScreenPosition: TPoint): PBlockInfo;
+    function Find(AScreenPosition: TPoint; Zoom: Single): PBlockInfo;
+    function Find(AX, AY: Word): PBlockInfo;
     function GetSerial: Cardinal;
     function Insert(AItem: TWorldItem): PBlockInfo;
     function Iterate(var ABlockInfo: PBlockInfo): Boolean;
@@ -342,7 +350,7 @@ begin
   inherited Destroy;
 end;
 
-function TLandTextureManager.GetArtMaterial(ATileID: Word): TMaterial;
+function TLandTextureManager.GetArtMaterial(ATileID: LongWord): TMaterial;
 var
   artEntry: TArt;
   animData: TAnimData;
@@ -373,7 +381,7 @@ begin
   Result.AddRef;
 end;
 
-function TLandTextureManager.GetArtMaterial(ATileID: Word; AHue: THue;
+function TLandTextureManager.GetArtMaterial(ATileID: LongWord; AHue: THue;
   APartialHue: Boolean): TMaterial;
 var
   artEntry: TArt;
@@ -431,7 +439,7 @@ begin
     tdfPartialHue in staticTiledata.Flags);
 end;
 
-function TLandTextureManager.GetTexMaterial(ATileID: Word): TMaterial;
+function TLandTextureManager.GetTexMaterial(ATileID: LongWord): TMaterial;
 var
   texEntry: TTexture;
   texID: Integer;
@@ -460,7 +468,7 @@ end;
 constructor TSeperatedStaticBlock.Create(AData: TStream; AIndex: TGenericIndex;
   AX, AY: Word);
 var
-  i: Integer;
+  i, ts: Integer;
   item: TStaticItem;
   block: TMemoryStream;
 begin
@@ -473,13 +481,18 @@ begin
   for i := 0 to 63 do
     Cells[i] := TStaticItemList.Create;
 
+  if not UseStaticsOldFormat
+     then ts := 7
+     else ts := 11;
+
   if (AData <> nil) and (AIndex.Lookup > 0) and (AIndex.Size > 0) then
   begin
     AData.Position := AIndex.Lookup;
     block := TMemoryStream.Create;
     block.CopyFrom(AData, AIndex.Size);
     block.Position := 0;
-    for i := 1 to (AIndex.Size div 7) do
+
+    for i := 1 to (AIndex.Size div ts) do
     begin
       item := TStaticItem.Create(Self, block, AX, AY);
       Cells[(item.Y mod 8) * 8 + (item.X mod 8)].Add(item);
@@ -592,7 +605,8 @@ begin
   FHeight := AHeight;
   FCellWidth := FWidth * 8;
   FCellHeight := FHeight * 8;
-  FBlockCache := TBlockCache.Create(256);
+  BlockCacheSize := 256;
+  FBlockCache := TBlockCache.Create(BlockCacheSize); //856
   FBlockCache.OnRemoveObject := @OnRemoveCachedObject;
 
   FOnChange := nil;
@@ -608,6 +622,7 @@ begin
   for i := 0 to FWriteMap.Size - 1 do
     FWriteMap[i] := True;
 
+  //FMaxStaticID := $1FFDC;
   FMaxStaticID := Min(Min(ResMan.Animdata.AnimCount, ResMan.Tiledata.StaticCount),
     ResMan.Art.EntryCount - $4000);
   Logger.Send([lcClient, lcInfo], 'Landscape recognizes $%x StaticTile IDs.',
@@ -628,6 +643,11 @@ end;
 
 destructor TLandscape.Destroy;
 begin
+  if (FBlockCacheBak <> nil) then
+  begin
+    FBlockCacheBak.OnRemoveObject := nil;
+    FreeAndNil(FBlockCacheBak);
+  end;
   if FBlockCache <> nil then
   begin
     FBlockCache.OnRemoveObject := nil;
@@ -661,7 +681,7 @@ begin
   end;
 end;
 
-function TLandscape.GetMapCell(AX, AY: Word): TMapCell;
+function TLandscape.GetMapCell(AX, AY: Integer): TMapCell;
 var
   block: TMapBlock;
 begin
@@ -674,7 +694,7 @@ begin
   end;
 end;
 
-function TLandscape.GetNormals(AX, AY: Word): TNormals;
+function TLandscape.GetNormals(AX, AY: Integer): TNormals;
 begin
   GetNormals(AX, AY, Result);
 end;
@@ -732,7 +752,9 @@ begin
       index.Lookup := ABuffer.Position
     else
       index.Lookup := -1;
-    index.Size := count * 7;
+    if not UseStaticsOldFormat
+      then index.Size := count * 7
+      else index.Size := count * 11;
     statics := TSeperatedStaticBlock.Create(ABuffer, index, coords.X, coords.Y);
 
     FBlockCache.RemoveID(id);
@@ -957,8 +979,8 @@ begin
 end;
 
 procedure TLandscape.FillDrawList(ADrawList: TScreenBuffer; AX, AY, AWidth,
-  AHeight: Word; AMap, AStatics: Boolean; ANoDraw: Boolean;
-  AAdditionalTiles: TWorldItemList = nil);
+  AHeight: Word; AMap, AStatics, ATDWalls, ATDBridges, ATDRoofs, ATDSurfaces, ATDFoliage, ATDWet: Boolean;
+  ANoDraw: Boolean; AAdditionalTiles: TWorldItemList = nil);
 var
   drawMapCell: TMapCell;
   drawStatics: TStaticItemList;
@@ -967,7 +989,7 @@ var
   staticTileData: TStaticTiledata;
 begin
   ADrawList.Clear;
-  tempDrawList := TWorldItemList.Create(False);;
+  tempDrawList := TWorldItemList.Create(False);
   for x := AX to AX + AWidth do
   begin
     for y := AY to AY + AWidth do
@@ -993,8 +1015,13 @@ begin
             staticTileData := ResMan.Tiledata.StaticTiles[drawStatics[i].TileID];
             if ANoDraw or FDrawMap[drawStatics[i].TileID + $4000] then
             begin
-              drawStatics[i].UpdatePriorities(staticTileData,
-                ADrawList.GetSerial);
+              if not ATDWalls and ((tdfWall in staticTileData.Flags) or (tdfWindow in staticTileData.Flags)) then continue;
+              if not ATDBridges and ((tdfBridge in staticTileData.Flags) or (tdfStairBack in staticTileData.Flags) or (tdfStairRight in staticTileData.Flags)) then continue;
+              if not ATDRoofs and (tdfRoof in staticTileData.Flags) then continue;
+              if not ATDSurfaces and (tdfSurface in staticTileData.Flags) then continue;
+              if not ATDFoliage  and (tdfFoliage in staticTileData.Flags) then continue;
+              if not ATDWet  and (tdfWet in staticTileData.Flags) then continue;
+              drawStatics[i].UpdatePriorities(staticTileData, ADrawList.GetSerial);
               tempDrawList.Add(drawStatics[i]);
             end;
           end;
@@ -1128,48 +1155,42 @@ end;
 
 procedure TLandscape.LoadNoDrawMap(AFileName: String);
 var
-  noDrawFile: TextFile;
-  line, ids1, ids2: String;
-  i, id1, id2, splitPos: Integer;
-begin
-  AssignFile(noDrawFile, AFileName);
-  Reset(noDrawFile);
-  while not EOF(noDrawFile) do
-  begin
-    ReadLn(noDrawFile, line);
-    if (Length(line) > 0) and (line[1] in ['S', 'T']) then
-    begin
-      splitPos := Pos('-', line);
-      if splitPos > 1 then
-      begin
-        ids1 := Copy(line, 2, splitPos - 2);
-        ids2 := Copy(line, splitPos + 1, Length(line));
-        if TryStrToInt(ids1, id1) and TryStrToInt(ids2, id2) then
-        begin
-          if line[1] = 'S' then
-          begin
-            Inc(id1, $4000);
-            Inc(id2, $4000);
-          end;
+  XMLDoc:  TXMLDocument;
+  iNode, node: TDOMNode;
+  s: string;
+  i, id: Integer;
 
-          for i := id1 to id2 do
-            if i < FDrawMap.Size then
-              FDrawMap[i] := False;
-        end;
-      end else
+begin
+  frmInitialize.SetStatusLabel(Format(frmInitialize.SplashLoading, ['VirtualTiles.xml']));
+  // Читаем xml файл с жесткого диска
+  ReadXMLFile(XMLDoc, AFileName);
+  if LowerCase(XMLDoc.DocumentElement.NodeName) = 'virtualtiles' then
+  begin
+    iNode := XMLDoc.DocumentElement.FirstChild;
+    while iNode <> nil do
+    begin
+      if LowerCase(iNode.NodeName) = 'nodraw' then
       begin
-        ids1 := Copy(line, 2, Length(line));
-        if TryStrToInt(ids1, id1) then
+        node := iNode.FirstChild;
+        while node <> nil do
         begin
-          if line[1] = 'S' then
-            Inc(id1, $4000);
-          if id1 < FDrawMap.Size then
-            FDrawMap[id1] := False;
+          s := LowerCase(node.NodeName);
+          if (s = 'tile') or (s = 'land') or (s = 'item') then
+            for i := node.Attributes.Length - 1 downto 0 do
+              if LowerCase(node.Attributes[i].NodeName) = 'id' then
+                if TryStrToInt(node.Attributes[i].NodeValue, id) then
+                begin
+                  if s = 'item'
+                    then Inc(id, $4000);
+                  if (id >= 0) and (id < FDrawMap.Size)
+                    then FDrawMap[id] := False;
+                end;
+          node := node.NextSibling;
         end;
       end;
+      iNode := iNode.NextSibling;
     end;
   end;
-  CloseFile(noDrawFile);
 end;
 
 procedure TLandscape.MoveStatic(AStatic: TStaticItem; AX, AY: Word);
@@ -1272,6 +1293,28 @@ begin
   Logger.ExitMethod([lcLandscape, lcDebug], 'TLandscape.UpdateWriteMap');
 end;
 
+procedure TLandscape.ResizeBlockCache(Count: Integer);
+begin
+    if Count < 0 then Count:= 256;
+    if FBlockCache <> nil then
+    begin
+      if BlockCacheSize = Count then exit;
+
+      FBlockCache.OnRemoveObject := nil;
+      if (FBlockCacheBak <> nil) then begin
+        FBlockCacheBak.Clear;
+        FreeAndNil(FBlockCacheBak);
+        FBlockCacheBak := nil;
+      end;
+      if Count = 0 then exit;
+      FBlockCacheBak := FBlockCache;
+
+      BlockCacheSize:= Count;
+      FBlockCache := TBlockCache.Create(BlockCacheSize); //256
+      FBlockCache.OnRemoveObject := @OnRemoveCachedObject;
+    end;
+end;
+
 { TMaterial }
 
 constructor TMaterial.Create;
@@ -1326,6 +1369,13 @@ begin
   Dec(FRefCount);
   if FRefCount < 1 then
     Free;
+end;
+
+function TMaterial.HitTest(AX, AY: Integer; Zoom: Single): Boolean;
+begin
+  AX := Trunc(AX / Zoom);
+  AY := Trunc(AY / Zoom);
+  Result := HitTest(AX, AY);
 end;
 
 function TMaterial.HitTest(AX, AY: Integer): Boolean;
@@ -1453,7 +1503,7 @@ begin
   end;
 end;
 
-function TScreenBuffer.Find(AScreenPosition: TPoint): PBlockInfo;
+function TScreenBuffer.Find(AScreenPosition: TPoint; Zoom: Single): PBlockInfo;
 var
   current: PBlockInfo;
   buff: array[0..3] of GLuint;
@@ -1498,8 +1548,41 @@ begin
           Result := current;
       end else
       if current^.LowRes.HitTest(AScreenPosition.x - current^.ScreenRect.Left,
-         AScreenPosition.y - current^.ScreenRect.Top) then
+         AScreenPosition.y - current^.ScreenRect.Top, Zoom) then
         Result := current;
+    end;
+    current := current^.Next;
+  end;
+end;
+
+function TScreenBuffer.Find(AX, AY: Word): PBlockInfo;
+var
+  current: PBlockInfo;
+  tile: TWorldItem;
+  staticTileData: TStaticTiledata;
+  tileZ: Integer;
+begin
+  Result := nil;
+  current := FShortCuts[0];
+  while current <> nil do //search the last matching tile
+  begin
+    if current^.State = ssNormal then begin
+      tile := current^.Item;
+      if (tile.X = AX) and (tile.Y = AY) then begin
+
+        tileZ := $FFFF;
+        if tile is TStaticItem then begin
+          staticTileData := ResMan.Tiledata.StaticTiles[tile.TileID];
+          if tdfSurface in staticTileData.Flags then
+            tileZ := tile.Z + staticTileData.Height;
+        end else if tile is TMapCell then begin
+          tileZ := ResMan.Landscape.GetEffectiveAltitude(tile as TMapCell)
+        end else if tile is TVirtualTile then
+          tileZ := tile.Z;
+
+        if (tileZ <> $FFFF) and ((Result = nil) or (tile.Z > Result^.Item.Z)) then
+         Result := current;
+      end;
     end;
     current := current^.Next;
   end;
@@ -1593,7 +1676,7 @@ begin
     shortcut := 1;
     blockInfo := FShortCuts[0];
     repeat
-      if step = nextStep then
+      if (step = nextStep) and (shortcut <= 10) then
       begin
         FShortCuts[shortcut] := blockInfo;
         Inc(shortcut);
@@ -1713,7 +1796,7 @@ end;
 
 { TAnimMaterial }
 
-constructor TAnimMaterial.Create(ABaseID: Word; AAnimData: TAnimData;
+constructor TAnimMaterial.Create(ABaseID: LongWord; AAnimData: TAnimData;
   AHue: THue = nil; APartialHue: Boolean = False);
 var
   i: Integer;

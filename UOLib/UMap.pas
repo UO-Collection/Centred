@@ -46,14 +46,14 @@ type
   protected
     FIsGhost: Boolean;
     FGhostZ: ShortInt;
-    FGhostID: Word;
-    function GetTileID: Word; override;
+    FGhostID: LongWord;
+    function GetTileID: LongWord; override;
     function GetZ: ShortInt; override;
   public
     property Altitude: ShortInt read GetZ write SetZ;
     property IsGhost: Boolean read FIsGhost write FIsGhost;
     property GhostZ: ShortInt read FGhostZ write FGhostZ;
-    property GhostID: Word write FGhostID;
+    property GhostID: LongWord write FGhostID;
 
     function Clone: TMapCell; override;
     function GetSize: Integer; override;
@@ -114,7 +114,7 @@ begin
   Create(AOwner, AData, 0, 0);
 end;
 
-function TMapCell.GetTileID: Word;
+function TMapCell.GetTileID: LongWord;
 begin
   if FIsGhost then
     Result := FGhostID

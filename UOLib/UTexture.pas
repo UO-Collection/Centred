@@ -30,7 +30,7 @@ unit UTexture;
 interface
 
 uses
-  Classes, Imaging, ImagingTypes, ImagingClasses, UMulBlock, UGenericIndex;
+  Classes, Imaging, ImagingTypes, ImagingClasses, UMulBlock, UArt, UGenericIndex;
 
 type
   TTexture = class(TMulBlock)
@@ -51,7 +51,18 @@ type
     property Extra: Integer read FExtra write FExtra;
   end;
 
+  TOldTexture = class(TTexture)
+    constructor Create(AData: TStream; AIndex: TGenericIndex); overload;
+    constructor Create(AExtra: Integer); overload;
+    constructor Create(AId: Cardinal);
+  private
+    FArtTile: TArt;
+  end;
+
 implementation
+
+uses
+  UGameResources;//, Logging;
 
 constructor TTexture.Create(AData: TStream; AIndex: TGenericIndex);
 var
@@ -130,6 +141,31 @@ begin
     FBuffer.Write(argbGraphic.Bits^, argbGraphic.Height * argbGraphic.Width * 2);
   end;
   argbGraphic.Free;
+end;
+
+
+// TOldTexture - перегрузка класса, для работы с текстурами пре альфа клиента
+
+constructor TOldTexture.Create(AId: Cardinal);
+var
+  extradata: Integer;
+begin
+  FArtTile := ResMan.Art.GetArt($4000 + AId, 0, nil, False);
+  if (FArtTile.Graphic.Width <= 64) then extradata := 0 else extradata := 1;
+  inherited Create(extradata); // Клиент использует не правильные текстуры
+  FArtTile.Graphic.StretchTo(0,0,FArtTile.Graphic.Width,FArtTile.Graphic.Height,
+      FGraphic, 0,0,FGraphic.Width,FGraphic.Height, rfBilinear );
+  //FArtTile.Destroy; // Надо ли удалять тайл?
+end;
+
+constructor TOldTexture.Create(AData: TStream; AIndex: TGenericIndex);
+begin
+  inherited Create(0);
+end;
+
+constructor TOldTexture.Create(AExtra: Integer);
+begin
+  inherited Create(AExtra);
 end;
 
 end.

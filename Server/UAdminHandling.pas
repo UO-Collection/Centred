@@ -108,9 +108,13 @@ procedure OnAdminHandlerPacket(ABuffer: TEnhancedMemoryStream;
   ANetState: TNetState);
 var
   packetHandler: TPacketHandler;
+  packetID: Byte;
 begin
-  if not ValidateAccess(ANetState, alAdministrator) then Exit;
-  packetHandler := AdminPacketHandlers[ABuffer.ReadByte];
+  if not ValidateAccess(ANetState, alDeveloper) then Exit;
+  packetID := ABuffer.ReadByte;
+  if ((packetID <> $01) and not ValidateAccess(ANetState, alAdministrator)) then Exit;
+
+  packetHandler := AdminPacketHandlers[packetID];
   if packetHandler <> nil then
     packetHandler.Process(ABuffer, ANetState);
 end;

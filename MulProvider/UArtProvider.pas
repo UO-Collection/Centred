@@ -30,22 +30,48 @@ unit UArtProvider;
 interface
 
 uses
-  Graphics, UMulProvider, UMulBlock, UGenericIndex, UArt, UHue;
+  Classes, Graphics, UMulProvider, UMulBlock, UGenericIndex, UArt, UHue, types;
 
 type
   TArtProvider = class(TIndexedMulProvider)
+    constructor Create(OldFormat: Boolean; AData, AIndex: TStream; AReadOnly: Boolean = False); overload;
+    constructor Create(OldFormat: Boolean; AData, AIndex: string; AReadOnly: Boolean = False); overload;
   protected
+    UseOldArtFormat: Boolean;
     function GetData(AID: Integer; AIndex: TGenericIndex): TMulBlock; override;
     function GetArtData(AID: Integer; AIndex: TGenericIndex; AColor: Word;
       AHue: THue; APartialHue: Boolean): TArt;
   public
     function GetArt(AID: Integer; AColor: Word; AHue: THue; APartialHue: Boolean): TArt;
     function GetFlatLand(AID: Integer): TArt;
+    function GetArtSize(AID: Integer): TSize;
   end;
 
 implementation
 
+uses
+  Logging;
+
+
 { TArtProvider }
+
+constructor TArtProvider.Create(OldFormat: Boolean; AData, AIndex: TStream; AReadOnly: Boolean = False);
+begin
+  inherited Create(AData, AIndex, AReadOnly);
+  UseOldArtFormat := OldFormat;
+  if UseOldArtFormat
+    then Logger.Send([lcInfo], 'Using pre-Alpha ArtData Format')
+    else Logger.Send([lcInfo], 'Using common ArtData Format');
+end;
+
+constructor TArtProvider.Create(OldFormat: Boolean; AData, AIndex: string; AReadOnly: Boolean = False);
+begin
+  inherited Create(AData, AIndex, AReadOnly);
+  UseOldArtFormat := OldFormat;
+  if UseOldArtFormat
+    then Logger.Send([lcInfo], 'Using pre-Alpha ArtData Format')
+    else Logger.Send([lcInfo], 'Using common ArtData Format');
+end;
 
 function TArtProvider.GetData(AID: Integer; AIndex: TGenericIndex): TMulBlock;
 begin
@@ -60,14 +86,14 @@ begin
     if AID < $4000 then
       Result := TArt.Create(FData, AIndex, atLand, AColor, AHue, APartialHue)
     else
-      Result := TArt.Create(FData, AIndex, atStatic, AColor, AHue, APartialHue);
+      Result := TArt.Create(FData, AIndex, atStatic, AColor, AHue, APartialHue, UseOldArtFormat);
   end
   else
   begin
     if AID < $4000 then
       Result := TArt.Create(nil, nil, atLand, AColor, AHue, APartialHue)
     else
-      Result := TArt.Create(nil, nil, atStatic, AColor, AHue, APartialHue);
+      Result := TArt.Create(nil, nil, atStatic, AColor, AHue, APartialHue, UseOldArtFormat);
   end;
   Result.ID := AID;
 end;
@@ -91,10 +117,37 @@ var
 begin
   FIndex.Position := CalculateIndexOffset(AID);
   genericIndex := TGenericIndex.Create(FIndex);
-  Result := TArt.Create(FData, genericIndex, atLandFlat);
+  Result := TArt.Create(FData, genericIndex, atLandFlat, UseOldArtFormat);
   genericIndex.Free;
   Result.OnChanged := @OnChanged;
   Result.OnFinished := @OnFinished;
+end;
+
+function TArtProvider.GetArtSize(AID: Integer): TSize;
+var
+  genericIndex: TGenericIndex;
+  //genericBlock: TMemoryStream;
+  value: SmallInt;
+begin
+  if (AID < $4000)
+  then Result := Size(44, 44)
+  else begin
+    FIndex.Position := CalculateIndexOffset(AID);
+    genericIndex := TGenericIndex.Create(FIndex);
+    if (genericIndex.Lookup <> -1) and (genericIndex.Size > 0) then begin
+      FData.Position := genericIndex.Lookup + 4;
+      //genericBlock := TMemoryStream.Create;
+      //genericBlock.CopyFrom(FData, 8);
+      //genericBlock.Position := 4;
+
+      FData.Read(value, SizeOf(SmallInt));   Result.cx := value;
+      FData.Read(value, SizeOf(SmallInt));   Result.cy := value;
+
+      //if Assigned(genericBlock) then genericBlock.Free;
+    end else
+      Result := Size(0, 0);
+    genericIndex.Free;
+  end;
 end;
 
 end.

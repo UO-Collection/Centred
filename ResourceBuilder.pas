@@ -27,8 +27,9 @@ program ResourceBuilder;
 
 {$mode objfpc}{$H+}
 
+
 uses
-	SysUtils, Classes;
+	SysUtils, Classes, strutils, Crc32Hash;
 
 var
 	fileList: TStringList;
@@ -36,7 +37,8 @@ var
 	i, count: Integer;
 	size: Cardinal;
 	lookupTable: array of Cardinal;
-	
+	fnHashTable: array of Cardinal;
+
 begin
 	if ParamCount <> 2 then
 	begin
@@ -50,11 +52,14 @@ begin
 	count := fileList.Count;
 	outfile.Write(count, SizeOf(Integer));
 	SetLength(lookupTable, count);
+	SetLength(fnHashTable, count);
 	outfile.Write(lookupTable[0], count * SizeOf(Cardinal));
+	outfile.Write(fnHashTable[0], count * SizeOf(Cardinal));
 	for i := 0 to count - 1 do
 	begin
 	  lookupTable[i] := outfile.Position;
-	  writeln(i, ': ', fileList.Strings[i]);
+	  CalcStringCRC32(AnsiLowerCase(fileList.Strings[i]), fnHashTable[i]);
+	  writeln(Format('#%.3d 0x%.8x : %s', [i, Int64(fnHashTable[i]), fileList.Strings[i]]));
 	  infile := TFileStream.Create(fileList.Strings[i], fmOpenRead);
 	  infile.Position := 0;
 	  size := infile.Size;
@@ -64,6 +69,7 @@ begin
 	end;
 	outfile.Position := SizeOf(Integer);
 	outfile.Write(lookupTable[0], count * SizeOf(Cardinal));
+	outfile.Write(fnHashTable[0], count * SizeOf(Cardinal));
 	outfile.Free;
 	fileList.Free;
 end.
