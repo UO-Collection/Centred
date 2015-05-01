@@ -28,6 +28,8 @@ type
     Selected: Boolean;
   end;
 
+  { TVirtualList }
+
   TVirtualList = class(TVirtualDrawTree)
 
   private
@@ -75,7 +77,7 @@ type
 
     procedure HandleMouseDblClick(var Message: TLMMouse; const HitInfo: THitInfo); override;
     procedure HandleMouseDown(var Message: TLMMouse; var HitInfo: THitInfo); override;
-    procedure HandleMouseUp(var Message: TLMMouse; const HitInfo: THitInfo); override;
+    procedure HandleMouseUp(Keys: PtrUInt; const HitInfo: THitInfo); override;
 
     property SelectedCount: Dword read FSelectionCount;
     property TilesCount: Dword read FTilesCount;
@@ -690,10 +692,10 @@ begin
 
 end;
 
-procedure TVirtualList.HandleMouseUp(var Message: TLMMouse; const HitInfo: THitInfo);
+procedure TVirtualList.HandleMouseUp(Keys: PtrUInt; const HitInfo: THitInfo);
 begin
   //Logger.Send([lcClient, lcDebug], 'TVirtualTree.HandleMouseUp %s', ['Start']);
-  inherited HandleMouseUp(Message, HitInfo);
+  inherited HandleMouseUp(Keys, HitInfo);
 end;
 
 //----------------------------------------------------------------------------------------------------------------------

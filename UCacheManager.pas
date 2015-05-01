@@ -43,7 +43,7 @@ type
   { TCacheManager }
 
   generic TCacheManager<T> = class
-  type public
+  public type
     { Types }
     TRemoveObjectEvent = procedure(AObject: T) of object;
 
@@ -53,7 +53,7 @@ type
       Obj: T;
       Next: PCacheEntry;
     end;
-  var protected
+  protected
     { Members }
     FSize: Integer;
     FFirst: PCacheEntry;

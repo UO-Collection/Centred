@@ -36,7 +36,7 @@ uses
   Forms, Dialogs, Windows, UdmNetwork, UResourceManager;
 
 {$R CentrED.res}
-{$R CentrED.manifest.rc}
+//{$R CentrED.manifest.rc}
 
 function GetApplicationName: String;
 begin

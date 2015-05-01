@@ -469,7 +469,6 @@ type
     procedure acUndoExecute(Sender: TObject);
     procedure acVirtualLayerExecute(Sender: TObject);
     procedure acWalkableExecute(Sender: TObject);
-    procedure acGridExecute(Sender: TObject);
     procedure ApplicationProperties1Idle(Sender: TObject; var Done: Boolean);
     procedure ApplicationProperties1ShowHint(var HintStr: string;
       var CanShow: Boolean; var HintInfo: THintInfo);
@@ -504,8 +503,6 @@ type
     procedure mnuAccountControlClick(Sender: TObject);
     procedure mnuAutoHideGroupListClick(Sender: TObject);
     procedure mnuAutoHideRandomListClick(Sender: TObject);
-    procedure mnuAutoShowFilterWindowClick(Sender: TObject);
-    procedure mnuCompactHueSettingsClick(Sender: TObject);
     procedure mnuDisconnectClick(Sender: TObject);
     procedure mnuDocsClick(Sender: TObject);
     procedure mnuEng2ComClick(Sender: TObject);
@@ -528,7 +525,6 @@ type
     procedure mnuSetLanguageClick(Sender: TObject);
     procedure mnuShowAnimationsClick(Sender: TObject);
     procedure mnuShowBlocksClick(Sender: TObject);
-    procedure mnuShowBridgesClick(Sender: TObject);
     procedure mnuShowGridClick(Sender: TObject);
     procedure mnuShowLightSourceClick(Sender: TObject);
     procedure mnuShowNoDrawTilesClick(Sender: TObject);
@@ -539,7 +535,6 @@ type
     procedure mnuWhiteBackgroundClick(Sender: TObject);
     procedure mnuWindowedModeClick(Sender: TObject);
     procedure mnuZoomClick(Sender: TObject);
-    procedure oglGameWindowClick(Sender: TObject);
     procedure oglGameWindowDblClick(Sender: TObject);
     procedure oglGameWindowKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
@@ -558,7 +553,6 @@ type
     procedure pbRadarMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure pbRadarPaint(Sender: TObject);
-    procedure pcLeftChange(Sender: TObject);
     procedure pcLeftResize(Sender: TObject);
     procedure pmGrabTileInfoPopup(Sender: TObject);
     procedure DropedownMenusClose(Sender: TObject);
@@ -573,8 +567,6 @@ type
     procedure tmMovementTimer(Sender: TObject);
     procedure tmSelectNodeTimer(Sender: TObject);
     procedure tmSettingsCloseTimer(Sender: TObject);
-    procedure tsNavigationContextPopup(Sender: TObject; MousePos: TPoint;
-      var Handled: Boolean);
     procedure tvGroupFreeNode(Sender: TBaseVirtualTree; Node: PVirtualNode);
     procedure tvGroupsChange(Sender: TBaseVirtualTree; Node: PVirtualNode);
     procedure tvGroupsDrawText(Sender: TBaseVirtualTree; TargetCanvas: TCanvas;
@@ -1073,11 +1065,6 @@ begin
   RebuildScreenBuffer;
 end;
 
-procedure TfrmMain.mnuShowBridgesClick(Sender: TObject);
-begin
-
-end;
-
 procedure TfrmMain.mnuShutdownClick(Sender: TObject);
 begin
   dmNetwork.Send(TQuitServerPacket.Create(''));
@@ -1162,11 +1149,6 @@ begin
 
   FRepaintNeeded := True;
   RebuildScreenBuffer;
-end;
-
-procedure TfrmMain.oglGameWindowClick(Sender: TObject);
-begin
-
 end;
 
 procedure TfrmMain.oglGameWindowDblClick(Sender: TObject);
@@ -1299,7 +1281,7 @@ var
   blockInfo: PBlockInfo;
   targetRect: TRect;
   offsetX, offsetY: Integer;
-  tile: TWorldItem;
+  item: TWorldItem;
   tileX, tileY, newX, newY: Word;
   targetBlocks: TBlockInfoList;  //а в чем разница с targetTiles: TWorldItemList; ?
   targetTile: TWorldItem;
@@ -1357,11 +1339,11 @@ begin
         Logger.Send([lcClient, lcDebug], 'Virtual tiles', FVirtualTiles.Count);
         for i := 0 to FVirtualTiles.Count - 1 do
         begin
-          tile := FVirtualTiles[i];
-          if tile is TGhostTile then
+          item := FVirtualTiles[i];
+          if item is TGhostTile then
           begin
-            dmNetwork.Send(TInsertStaticPacket.Create(tile.X, tile.Y, tile.Z, tile.TileID, TGhostTile(tile).Hue));
-            FUndoList^.Add(TDeleteStaticPacket.Create(TGhostTile(tile)));
+            dmNetwork.Send(TInsertStaticPacket.Create(item.X, item.Y, item.Z, item.TileID, TGhostTile(item).Hue));
+            FUndoList^.Add(TDeleteStaticPacket.Create(TGhostTile(item)));
           end;
         end;
       end else if (SelectedTile <> targetTile) or targetTile.CanBeEdited then
@@ -1395,7 +1377,7 @@ begin
             end;
           end;
 
-          if acMove.Checked then                       //***** Move tile *****//
+          if acMove.Checked then                       //***** Move item *****//
           begin
             offsetX := frmMoveSettings.GetOffsetX;
             offsetY := frmMoveSettings.GetOffsetY;
@@ -1423,81 +1405,81 @@ begin
             begin
               if frmMoveSettings.cbLand.Checked and (((offsetY > 0) or (offsetX > 0)) and not ((offsetY > 0) and (offsetX < 0)))
                 then tileY := abs(i - targetBlocks.Count + 1) else tileY := i;
-              tile := targetBlocks.Items[tileY]^.Item;
+              item := targetBlocks.Items[tileY]^.Item;
 
-              if (frmMoveSettings.cbItem.Checked) and (tile is TStaticItem) then begin
-                newX := EnsureRange(tile.X + offsetX, 0, FLandscape.CellWidth - 1);
-                newY := EnsureRange(tile.Y + offsetY, 0, FLandscape.CellHeight - 1);
-                FUndoList^.Add(TMoveStaticPacket.Create(newX, newY, tile.Z, tile.TileID, TStaticItem(tile).Hue, tile.X, tile.Y));
-                dmNetwork.Send(TMoveStaticPacket.Create(TStaticItem(tile), newX, newY));
+              if (frmMoveSettings.cbItem.Checked) and (item is TStaticItem) then begin
+                newX := EnsureRange(item.X + offsetX, 0, FLandscape.CellWidth - 1);
+                newY := EnsureRange(item.Y + offsetY, 0, FLandscape.CellHeight - 1);
+                FUndoList^.Add(TMoveStaticPacket.Create(newX, newY, item.Z, item.TileID, TStaticItem(item).Hue, item.X, item.Y));
+                dmNetwork.Send(TMoveStaticPacket.Create(TStaticItem(item), newX, newY));
               end;
-              if (frmMoveSettings.cbLand.Checked) and (tile is TMapCell) then begin
-                newX := EnsureRange(tile.X + offsetX, 0, FLandscape.CellWidth - 1);
-                newY := EnsureRange(tile.Y + offsetY, 0, FLandscape.CellHeight - 1);
+              if (frmMoveSettings.cbLand.Checked) and (item is TMapCell) then begin
+                newX := EnsureRange(item.X + offsetX, 0, FLandscape.CellWidth - 1);
+                newY := EnsureRange(item.Y + offsetY, 0, FLandscape.CellHeight - 1);
                 map := FLandscape.MapCell[newX, newY];
 
                 // Это не очень хорошо, для оптимизации следует ввести специальный пакет TMoveMapPacket
-                FUndoList^.Add(TDrawMapPacket.Create(tile.X, tile.Y, tile.Z, tile.TileID));
+                FUndoList^.Add(TDrawMapPacket.Create(item.X, item.Y, item.Z, item.TileID));
                 FUndoList^.Add(TDrawMapPacket.Create(newX, newY, map.RawZ, map.TileID));
-                dmNetwork.Send(TDrawMapPacket.Create(tile.X, tile.Y, z, $0001));
-                dmNetwork.Send(TDrawMapPacket.Create(newX, newY, tile.Z, tile.TileID));
+                dmNetwork.Send(TDrawMapPacket.Create(item.X, item.Y, z, $0001));
+                dmNetwork.Send(TDrawMapPacket.Create(newX, newY, item.Z, item.TileID));
 
               end;
             end;
-          end else if acElevate.Checked then        //***** Elevate tile *****//
+          end else if acElevate.Checked then        //***** Elevate item *****//
           begin
             for i := 0 to targetBlocks.Count - 1 do
             begin
-              tile := targetBlocks.Items[i]^.Item;
+              item := targetBlocks.Items[i]^.Item;
 
               z := frmElevateSettings.seZ.Value;
               if frmElevateSettings.rbRaise.Checked then
-                z := EnsureRange(tile.Z + z, -128, 127)
+                z := EnsureRange(item.Z + z, -128, 127)
               else if frmElevateSettings.rbLower.Checked then
-                z := EnsureRange(tile.Z - z, -128, 127);
+                z := EnsureRange(item.Z - z, -128, 127);
 
-              if tile is TMapCell then
+              if item is TMapCell then
               begin
                 if frmElevateSettings.cbRandomHeight.Checked then
                   Inc(z, Random(frmElevateSettings.seRandomHeight.Value));
-                FUndoList^.Add(TDrawMapPacket.Create(tile.X, tile.Y, tile.Z,
-                  tile.TileID));
-                dmNetwork.Send(TDrawMapPacket.Create(tile.X, tile.Y, z,
-                  tile.TileID));
+                FUndoList^.Add(TDrawMapPacket.Create(item.X, item.Y, item.Z,
+                  item.TileID));
+                dmNetwork.Send(TDrawMapPacket.Create(item.X, item.Y, z,
+                  item.TileID));
               end else
               begin
-                FUndoList^.Add(TElevateStaticPacket.Create(tile.X, tile.Y,
-                  z, tile.TileID, TStaticItem(tile).Hue, tile.Z));
-                dmNetwork.Send(TElevateStaticPacket.Create(TStaticItem(tile), z));
+                FUndoList^.Add(TElevateStaticPacket.Create(item.X, item.Y,
+                  z, item.TileID, TStaticItem(item).Hue, item.Z));
+                dmNetwork.Send(TElevateStaticPacket.Create(TStaticItem(item), z));
               end;
             end;
-          end else if acDelete.Checked then          //***** Delete tile *****//
+          end else if acDelete.Checked then          //***** Delete item *****//
           begin
             Logger.Send([lcClient, lcDebug], 'targetBlocks.Count', targetBlocks.Count);
             for i := 0 to targetBlocks.Count - 1 do
             begin
-              tile := targetBlocks.Items[i]^.Item;
-              if tile is TStaticItem then
+              item := targetBlocks.Items[i]^.Item;
+              if item is TStaticItem then
               begin
-                FUndoList^.Add(TInsertStaticPacket.Create(tile.X, tile.Y,
-                  tile.Z, tile.TileID, TStaticItem(tile).Hue));
-                dmNetwork.Send(TDeleteStaticPacket.Create(TStaticItem(tile)));
+                FUndoList^.Add(TInsertStaticPacket.Create(item.X, item.Y,
+                  item.Z, item.TileID, TStaticItem(item).Hue));
+                dmNetwork.Send(TDeleteStaticPacket.Create(TStaticItem(item)));
               end;
             end;
-          end else if acHue.Checked then                //***** Hue tile *****//
+          end else if acHue.Checked then                //***** Hue item *****//
           begin
             for i := 0 to targetBlocks.Count - 1 do
             begin
               blockInfo := targetBlocks.Items[i];
-              tile := blockInfo^.Item;
+              item := blockInfo^.Item;
 
-              if blockInfo^.HueOverride and (tile is TStaticItem) then
+              if blockInfo^.HueOverride and (item is TStaticItem) then
               begin
-                if TStaticItem(tile).Hue <> blockInfo^.Hue then
+                if TStaticItem(item).Hue <> blockInfo^.Hue then
                 begin
-                  FUndoList^.Add(THueStaticPacket.Create(tile.X, tile.Y, tile.Z,
-                    tile.TileID, blockInfo^.Hue, TStaticItem(tile).Hue));
-                dmNetwork.Send(THueStaticPacket.Create(TStaticItem(tile),
+                  FUndoList^.Add(THueStaticPacket.Create(item.X, item.Y, item.Z,
+                    item.TileID, blockInfo^.Hue, TStaticItem(item).Hue));
+                dmNetwork.Send(THueStaticPacket.Create(TStaticItem(item),
                     blockInfo^.Hue));
                 end;
               end;
@@ -1823,7 +1805,7 @@ procedure TfrmMain.btnRandomPresetSaveClick(Sender: TObject);
 var
   presetName: string;
   i: Integer;
-  preset, tile: TDOMElement;
+  presetElement, tileElement: TDOMElement;
   children: TDOMNodeList;
   tileNode: PVirtualItem;
   tileInfo: PTileInfo;
@@ -1831,31 +1813,31 @@ begin
   presetName := cbRandomPreset.Text;
   if InputQuery(lbDlgSaveRandPrsCaption, lbDlgSaveRandPrs, presetName) then
   begin
-    preset := FindRandomPreset(presetName);
-    if preset = nil then
+    presetElement := FindRandomPreset(presetName);
+    if presetElement = nil then
     begin
-      preset := FRandomPresetsDoc.CreateElement('Preset');
-      preset.AttribStrings['Name'] := UTF8ToCP1251(presetName);
-      FRandomPresetsDoc.DocumentElement.AppendChild(preset);
-      cbRandomPreset.Items.AddObject(presetName, preset);
+      presetElement := FRandomPresetsDoc.CreateElement('PresetElement');
+      presetElement.AttribStrings['Name'] := UTF8ToCP1251(presetName);
+      FRandomPresetsDoc.DocumentElement.AppendChild(presetElement);
+      cbRandomPreset.Items.AddObject(presetName, presetElement);
     end else
     begin
-      children := preset.ChildNodes;
+      children := presetElement.ChildNodes;
       for i := children.Count - 1 downto 0 do
-        preset.RemoveChild(children[i]);
+        presetElement.RemoveChild(children[i]);
     end;
 
     tileNode := vdlRandom.GetFirst;
     while tileNode <> nil do
     begin
       tileInfo := vdlRandom.GetNodeData(tileNode);
-      tile := FRandomPresetsDoc.CreateElement('Tile');
-      tile.AttribStrings['ID'] := IntToStr(tileInfo^.ID);
-      preset.AppendChild(tile);
+      tileElement := FRandomPresetsDoc.CreateElement('TileElement');
+      tileElement.AttribStrings['ID'] := IntToStr(tileInfo^.ID);
+      presetElement.AppendChild(tileElement);
       tileNode := vdlRandom.GetNext(tileNode);
     end;
 
-    cbRandomPreset.ItemIndex := cbRandomPreset.Items.IndexOfObject(preset);
+    cbRandomPreset.ItemIndex := cbRandomPreset.Items.IndexOfObject(presetElement);
 
     SaveRandomPresets;
   end;
@@ -1863,7 +1845,7 @@ end;
 
 procedure TfrmMain.cbRandomPresetChange(Sender: TObject);
 var
-  preset, tile: TDOMElement;
+  presetElement, tileElement: TDOMElement;
   tiles: TDOMNodeList;
   tileNode: PVirtualItem;
   tileInfo: PTileInfo;
@@ -1872,13 +1854,13 @@ begin
   if cbRandomPreset.ItemIndex > -1 then
   begin
     vdlRandom.Clear;
-    preset := TDOMElement(cbRandomPreset.Items.Objects[cbRandomPreset.ItemIndex]);
-    tiles := preset.ChildNodes;
+    presetElement := TDOMElement(cbRandomPreset.Items.Objects[cbRandomPreset.ItemIndex]);
+    tiles := presetElement.ChildNodes;
     for i := 0 to tiles.Count - 1 do
     begin
-      tile := TDOMElement(tiles[i]);
-      if (tile.NodeName = 'Tile') and
-         TryStrToInt(tile.AttribStrings['ID'], id) and
+      tileElement := TDOMElement(tiles[i]);
+      if (tileElement.NodeName = 'TileElement') and
+         TryStrToInt(tileElement.AttribStrings['ID'], id) and
          (id < FLandscape.MaxStaticID + $4000) then
       begin
         tileNode := vdlRandom.AddItem(nil);
@@ -2052,11 +2034,6 @@ procedure TfrmMain.acWalkableExecute(Sender: TObject);
 begin
   InvalidateFilter;
   FRepaintNeeded := True;
-end;
-
-procedure TfrmMain.acGridExecute(Sender: TObject);
-begin
-
 end;
 
 procedure TfrmMain.acDrawExecute(Sender: TObject);
@@ -2852,16 +2829,6 @@ begin
   spTileListMoved(Sender);
 end;
 
-procedure TfrmMain.mnuAutoShowFilterWindowClick(Sender: TObject);
-begin
-
-end;
-
-procedure TfrmMain.mnuCompactHueSettingsClick(Sender: TObject);
-begin
-
-end;
-
 procedure TfrmMain.spGroupListMoved(Sender: TObject);
 var
   anchor: integer;
@@ -3032,11 +2999,6 @@ begin
   pbRadar.Canvas.Line(posX-scrW-1, posY+scrH+1, posX-scrW-1, posY-scrH-1);
 end;
 
-procedure TfrmMain.pcLeftChange(Sender: TObject);
-begin
-
-end;
-
 procedure TfrmMain.pmGrabTileInfoPopup(Sender: TObject);
 var
   isStatic: Boolean;
@@ -3083,12 +3045,6 @@ begin
   tbStatics.Down := acStatics.Checked;
   tbNoDraw.Down  := acNoDraw.Checked;
   tbFlat.Down    := acFlat.Checked;
-end;
-
-procedure TfrmMain.tsNavigationContextPopup(Sender: TObject; MousePos: TPoint;
-  var Handled: Boolean);
-begin
-
 end;
 
 procedure TfrmMain.FormMouseMove(Sender: TObject; Shift: TShiftState; X,Y: Integer);
@@ -5613,7 +5569,7 @@ var
   z, b, t, a, e, value: Integer;
   uu, ur, ll, ul, dl, dr : Word;
   valueF : Single;
-  tile: TBrushTile;
+  brushTile: TBrushTile;
   // Создание миниатюр
   id : Integer;
   destColor, hue : Word;
@@ -5681,7 +5637,7 @@ begin
       FBrushList.Brush[b]^.ECount := 0;
       while tNode <> nil do begin
         s := LowerCase(tNode.NodeName);
-        if (s = 'tile') or (s = 'land') then
+        if (s = 'brushTile') or (s = 'land') then
           inc(FBrushList.Brush[b]^.Count)
         else if (s = 'edge') then
           inc(FBrushList.Brush[b]^.ECount);
@@ -5703,37 +5659,37 @@ begin
       while tNode <> nil do
       begin
         s := LowerCase(tNode.NodeName);
-        if (s = 'tile') or (s = 'land') then begin
+        if (s = 'brushTile') or (s = 'land') then begin
           //Logger.Send([lcInfo], 'Brush: %d - Land: %d / %d', [b+1, t+1, FBrushList.Brush[b]^.Count]);
-          tile.ID := $FFFF;
-          tile.Chance := 1.0;
+          brushTile.ID := $FFFF;
+          brushTile.Chance := 1.0;
           for a := tNode.Attributes.Length - 1 downto 0 do begin
             attribute := LowerCase(tNode.Attributes[a].NodeName);
             if attribute = 'id' then begin
               if TryStrToInt(tNode.Attributes[a].NodeValue, value)
-                then tile.ID := value;
+                then brushTile.ID := value;
             end else if attribute = 'chance' then begin
               if TryStrToFloat(tNode.Attributes[a].NodeValue, valueF)
-                then tile.Chance := valueF;
+                then brushTile.Chance := valueF;
             end;
           end;
-          tile.Mask   := $0F;
-          tile.Brush1 := FBrushList.Brush[b];
-          tile.Brush2 := FBrushList.Brush[b];
+          brushTile.Mask   := $0F;
+          brushTile.Brush1 := FBrushList.Brush[b];
+          brushTile.Brush2 := FBrushList.Brush[b];
 
           // Тестирование...
-          if LoadListError(tile.ID = $FFFF,
+          if LoadListError(brushTile.ID = $FFFF,
              fPath, Format(GetParseErText('blTagTileAttrID'), [FBrushList.Brush[b]^.ID]))
              then begin LoadBrushTilesList; Exit; end;
-          if LoadListError(tile.ID > $3FFF,
-             fPath, Format(GetParseErText('blTagTileAttrIDOutOfRange'), [tile.ID, tile.ID, FBrushList.Brush[b]^.ID]))
+          if LoadListError(brushTile.ID > $3FFF,
+             fPath, Format(GetParseErText('blTagTileAttrIDOutOfRange'), [brushTile.ID, brushTile.ID, FBrushList.Brush[b]^.ID]))
              then begin LoadBrushTilesList; Exit; end;
-          if LoadListError(FBrushList.Tiles[tile.ID].ID = tile.ID,
-             fPath, Format(GetParseErText('blTagTileRedeclaration'), [tile.ID, tile.ID, FBrushList.Brush[b]^.ID]))
+          if LoadListError(FBrushList.Tiles[brushTile.ID].ID = brushTile.ID,
+             fPath, Format(GetParseErText('blTagTileRedeclaration'), [brushTile.ID, brushTile.ID, FBrushList.Brush[b]^.ID]))
              then begin LoadBrushTilesList; Exit; end;
 
-          FBrushList.Tiles[tile.ID] := tile;
-          FBrushList.Brush[b]^.BTile[t] := @FBrushList.Tiles[tile.ID];
+          FBrushList.Tiles[brushTile.ID] := brushTile;
+          FBrushList.Brush[b]^.BTile[t] := @FBrushList.Tiles[brushTile.ID];
           inc(t);
         end else if  (s = 'edge') then begin
           //Logger.Send([lcInfo], 'Brush: %d - Edge: %d / %d', [b+1, e+1, FBrushList.Brush[b]^.ECount]);
@@ -5762,7 +5718,7 @@ begin
           FBrushList.Brush[b]^.BEdges[e]^.CountDR := 0;
           while eNode <> nil do begin
             s := LowerCase(eNode.NodeName);
-            if (s = 'tile') or (s = 'land') then begin
+            if (s = 'brushTile') or (s = 'land') then begin
               attribute := '';
               for a := eNode.Attributes.Length - 1 downto 0 do begin
                 attribute := LowerCase(eNode.Attributes[a].NodeName);
@@ -5779,7 +5735,7 @@ begin
               end;
 
               if LoadListError((attribute<>'type') or ((s<>'uu')and(s<>'ur')and(s<>'ll')and(s<>'ul')and(s<>'dl')and(s<>'dr')),
-                 fPath, Format(GetParseErText('blTagTile2AttrType'), [tile.ID, tile.ID, FBrushList.Brush[b]^.BEdges[e]^.ID, FBrushList.Brush[b]^.ID]))
+                 fPath, Format(GetParseErText('blTagTile2AttrType'), [brushTile.ID, brushTile.ID, FBrushList.Brush[b]^.BEdges[e]^.ID, FBrushList.Brush[b]^.ID]))
                  then begin LoadBrushTilesList; Exit; end;
             end;
             eNode := eNode.NextSibling;
@@ -5795,57 +5751,57 @@ begin
           eNode := tNode.FirstChild;
           while eNode <> nil do begin
             s := LowerCase(eNode.NodeName);
-            if (s = 'tile') or (s = 'land') then begin
+            if (s = 'brushTile') or (s = 'land') then begin
               //Logger.Send([lcInfo], 'Brush: %d - Edge: %d - Land: %d / %d', [b+1, e+1, uu+ur+ll+ul+dl+dr+1, FBrushList.Brush[b]^.BEdges[e]^.CountUU+FBrushList.Brush[b]^.BEdges[e]^.CountUR+FBrushList.Brush[b]^.BEdges[e]^.CountLL+FBrushList.Brush[b]^.BEdges[e]^.CountUL+FBrushList.Brush[b]^.BEdges[e]^.CountDL+FBrushList.Brush[b]^.BEdges[e]^.CountDR]);
-              tile.ID := $FFFF;
-              tile.Chance := 1.0;
+              brushTile.ID := $FFFF;
+              brushTile.Chance := 1.0;
               for a := eNode.Attributes.Length - 1 downto 0 do begin
                 attribute := LowerCase(eNode.Attributes[a].NodeName);
                 if attribute = 'type' then begin
                   s := LowerCase(CP1251ToUTF8(eNode.Attributes[a].NodeValue));
-                  if      s = 'uu' then tile.Mask := $03
-                  else if s = 'ur' then tile.Mask := $07
-                  else if s = 'll' then tile.Mask := $09
-                  else if s = 'ul' then tile.Mask := $0B
-                  else if s = 'dl' then tile.Mask := $0D
-                  else if s = 'dr' then tile.Mask := $0E;
+                  if      s = 'uu' then brushTile.Mask := $03
+                  else if s = 'ur' then brushTile.Mask := $07
+                  else if s = 'll' then brushTile.Mask := $09
+                  else if s = 'ul' then brushTile.Mask := $0B
+                  else if s = 'dl' then brushTile.Mask := $0D
+                  else if s = 'dr' then brushTile.Mask := $0E;
                 end else if attribute = 'id' then begin
                   if TryStrToInt(eNode.Attributes[a].NodeValue, value)
-                    then tile.ID := value;
+                    then brushTile.ID := value;
                 end else if attribute = 'chance' then begin
                   if TryStrToFloat(eNode.Attributes[a].NodeValue, valueF)
-                    then tile.Chance := valueF;
+                    then brushTile.Chance := valueF;
                 end;
               end;
 
               // Тестирование...
-              if LoadListError(tile.ID = $FFFF,
+              if LoadListError(brushTile.ID = $FFFF,
                  fPath, Format(GetParseErText('blTagTile2AttrID'), [FBrushList.Brush[b]^.ID]))
                  then begin LoadBrushTilesList; Exit; end;
-              if LoadListError(tile.ID > $3FFF,
-                 fPath, Format(GetParseErText('blTagTile2AttrIDOutOfRange'), [tile.ID, tile.ID, FBrushList.Brush[b]^.ID]))
+              if LoadListError(brushTile.ID > $3FFF,
+                 fPath, Format(GetParseErText('blTagTile2AttrIDOutOfRange'), [brushTile.ID, brushTile.ID, FBrushList.Brush[b]^.ID]))
                  then begin LoadBrushTilesList; Exit; end;
-              if LoadListError(FBrushList.Tiles[tile.ID].ID = tile.ID,
-                 fPath, Format(GetParseErText('blTagTile2Redeclaration'), [tile.ID, tile.ID, FBrushList.Brush[b]^.ID]))
+              if LoadListError(FBrushList.Tiles[brushTile.ID].ID = brushTile.ID,
+                 fPath, Format(GetParseErText('blTagTile2Redeclaration'), [brushTile.ID, brushTile.ID, FBrushList.Brush[b]^.ID]))
                  then begin LoadBrushTilesList; Exit; end;
 
-              tile.Brush1 := FBrushList.Brush[b];
-              tile.Brush2 := nil;
-              FBrushList.Tiles[tile.ID] := tile;
-              if          tile.Mask = $03 then begin
-                FBrushList.Brush[b]^.BEdges[e]^.BTileUU[uu] := @FBrushList.Tiles[tile.ID]; inc(uu);
-              end else if tile.Mask = $07 then begin
-                FBrushList.Brush[b]^.BEdges[e]^.BTileUR[ur] := @FBrushList.Tiles[tile.ID]; inc(ur);
-              end else if tile.Mask = $09 then begin
-                FBrushList.Brush[b]^.BEdges[e]^.BTileLL[ll] := @FBrushList.Tiles[tile.ID]; inc(ll);
-              end else if tile.Mask = $0B then begin
-                FBrushList.Brush[b]^.BEdges[e]^.BTileUL[ul] := @FBrushList.Tiles[tile.ID]; inc(ul);
-              end else if tile.Mask = $0D then begin
-                FBrushList.Brush[b]^.BEdges[e]^.BTileDL[dl] := @FBrushList.Tiles[tile.ID]; inc(dl);
-              end else if tile.Mask = $0E then begin
-                FBrushList.Brush[b]^.BEdges[e]^.BTileDR[dr] := @FBrushList.Tiles[tile.ID]; inc(dr);
+              brushTile.Brush1 := FBrushList.Brush[b];
+              brushTile.Brush2 := nil;
+              FBrushList.Tiles[brushTile.ID] := brushTile;
+              if          brushTile.Mask = $03 then begin
+                FBrushList.Brush[b]^.BEdges[e]^.BTileUU[uu] := @FBrushList.Tiles[brushTile.ID]; inc(uu);
+              end else if brushTile.Mask = $07 then begin
+                FBrushList.Brush[b]^.BEdges[e]^.BTileUR[ur] := @FBrushList.Tiles[brushTile.ID]; inc(ur);
+              end else if brushTile.Mask = $09 then begin
+                FBrushList.Brush[b]^.BEdges[e]^.BTileLL[ll] := @FBrushList.Tiles[brushTile.ID]; inc(ll);
+              end else if brushTile.Mask = $0B then begin
+                FBrushList.Brush[b]^.BEdges[e]^.BTileUL[ul] := @FBrushList.Tiles[brushTile.ID]; inc(ul);
+              end else if brushTile.Mask = $0D then begin
+                FBrushList.Brush[b]^.BEdges[e]^.BTileDL[dl] := @FBrushList.Tiles[brushTile.ID]; inc(dl);
+              end else if brushTile.Mask = $0E then begin
+                FBrushList.Brush[b]^.BEdges[e]^.BTileDR[dr] := @FBrushList.Tiles[brushTile.ID]; inc(dr);
               end;
-              FBrushList.Tiles[tile.ID].ID := FBrushList.Brush[b]^.BEdges[e]^.ID; // Временно запоминаем ID перехода (позже востанавливаем ID тайла)
+              FBrushList.Tiles[brushTile.ID].ID := FBrushList.Brush[b]^.BEdges[e]^.ID; // Временно запоминаем ID перехода (позже востанавливаем ID тайла)
             end;
             eNode := eNode.NextSibling;
           end;
